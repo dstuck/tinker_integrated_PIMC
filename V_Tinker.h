@@ -1,0 +1,42 @@
+/*
+ * V_Tinker.h
+ *
+ *  Created on: Sep 7, 2012
+ *      Author: dstuck
+ */
+
+#ifndef V_TINKER_H_
+#define V_TINKER_H_
+
+#include "CallTinker.h"
+#include "CoordUtil.h"
+#include "debug.h"
+#include "Potential.h"
+#include "Propagator.h"
+#include "Particle.h"
+#include "Rho_Free.h"
+#include <math.h>
+#include <iostream>
+#include <vector>
+#include <fstream>
+using namespace std;
+
+class V_Tinker: public Potential {
+public:
+	V_Tinker(CoordUtil, vector<double>, double, double);
+	virtual ~V_Tinker();
+	double GetV(vector<Particle>, Propagator *);
+	string GetType();
+	void Tokenize(const string&, vector<string>&, const string& = " ");
+
+	double vEquib;
+	std::string tinkInFileName;
+	std::string tinkOutFileName;
+	std::string tinkPrmFileName;
+	ofstream inFile;
+	ifstream outFile;
+	CoordUtil coordKeeper;
+        vector<double> wTinker;
+};
+
+#endif /* V_TINKER_H_ */

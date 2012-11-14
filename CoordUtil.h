@@ -18,7 +18,7 @@ using namespace std;
 class CoordUtil {
 public:
 	CoordUtil();
-	CoordUtil(vector< vector< vector<double> > >, vector<double>, vector< vector<double> >, vector<string>, vector<int>, vector< vector<int> >, string, string);
+	CoordUtil(double, double, vector< vector< vector<double> > >, vector<double>, vector<double>, vector< vector<double> >, vector<string>, vector<int>, vector< vector<int> >, string, string);
 	virtual ~CoordUtil();
 
 	vector< vector<double> > normalModeToCart(vector<Particle>);
@@ -30,6 +30,8 @@ public:
 	std::string prmName;
 	vector<string> atomType;
 	vector<int> paramType;
+        vector<double> mass;
+        vector<double> reducedMass;
 	vector<double> omega;
 	vector< vector<int> > connectivity;
 	vector< vector<double> > initCart;

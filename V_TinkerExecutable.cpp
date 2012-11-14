@@ -7,18 +7,18 @@
 
 #include "V_TinkerExecutable.h"
 
-V_TinkerExecutable::V_TinkerExecutable(CoordUtil coords) {
+V_TinkerExecutable::V_TinkerExecutable(CoordUtil * coords) {
 //	tinkInFileName = "pimc.xyz";
 //	tinkOutFileName = "pimc.out";
-	tinkInFileName = coords.tinkerName + ".xyz";
-	tinkOutFileName = coords.tinkerName + ".outTinker";
-	tinkPrmFileName = coords.prmName;
+	tinkInFileName = coords->tinkerName + ".xyz";
+	tinkOutFileName = coords->tinkerName + ".outTinker";
+	tinkPrmFileName = coords->prmName;
 	coordKeeper = coords;
 
 	vector<Particle> parts;
 	Particle p0(0.0, 1);
 	Propagator * rhoFree = new Rho_Free;
-	for(int i=0; i<coordKeeper.numModes; i++) {
+	for(int i=0; i<coordKeeper->numModes; i++) {
 		parts.push_back(p0);
 	}
 	vEquib = 0.0;
@@ -38,16 +38,16 @@ double V_TinkerExecutable::GetV(vector<Particle> part, Propagator * rho){
 	outFile.open(tinkOutFileName.c_str());
 
 	double V = 0;
-	int N = coordKeeper.numPart;
+	int N = coordKeeper->numPart;
 	//	Get cartesians from normal modes
-	vector< vector<double> > cartPos = coordKeeper.normalModeToCart(part);
+	vector< vector<double> > cartPos = coordKeeper->normalModeToCart(part);
 
 //	Write tinker inputfile
 	inFile << N << endl;
 	for(int i=0; i<N; i++) {
-		inFile << i+1 << "\t" << coordKeeper.atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
-		for(int c=0; c<int(coordKeeper.connectivity[i].size()); c++) {
-				inFile << "\t" << coordKeeper.connectivity[i][c];
+		inFile << i+1 << "\t" << coordKeeper->atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
+		for(int c=0; c<int(coordKeeper->connectivity[i].size()); c++) {
+				inFile << "\t" << coordKeeper->connectivity[i][c];
 		}
 		inFile << endl;
 	}

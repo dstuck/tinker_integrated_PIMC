@@ -316,14 +316,14 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	epsTemp = beta/((double)pSlice);
 
 //	TODO: Remove this
-	double eZPE=0;
-	double eFull=0;
-	for(int i=0; i<nMode; i++){
-		eZPE += omega[i]/2.0;
-                eFull += omega[i]/2.0/tanh(beta*omega[i]/2.0);
-	}
+//	double eZPE=0;
+//	double eFull=0;
+//	for(int i=0; i<nMode; i++){
+//		eZPE += omega[i]/2.0;
+//                eFull += omega[i]/2.0/tanh(beta*omega[i]/2.0);
+//	}
 //	cout << "Harmonic ZPE:\t" << eZPE << endl;
-	cout << "Harmonic Energy:\t" << eFull << endl;
+//	cout << "Harmonic Energy:\t" << eFull << endl;
 /*
 	for(int i = 0; i < nPart; i++) {
 		for (int k = 0; k < coorDim; k++) {
@@ -335,9 +335,8 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	}
 */
 
-	CoordUtil coords(modes, omega, initPos, atomType, paramType, connectivity, outName, prmFile);
-
-	sys = new TestSystem(nMode, pSlice, coorDim, atomType, beta, mass, coords, physicsParams);
+	CoordUtil * coords = new CoordUtil(nMode, nPart, modes, omega, mass, initPos, atomType, paramType, connectivity, outName, prmFile);
+	sys = new TestSystem(pSlice, beta, coords, physicsParams);
 	simStats = new Stats();
 	energyStats = new Stats();
 	potentialStats = new Stats();

@@ -22,7 +22,7 @@ using namespace std;
 
 class V_TinkerExecutable: public Potential {
 public:
-	V_TinkerExecutable(CoordUtil);
+	V_TinkerExecutable(CoordUtil*);
 	virtual ~V_TinkerExecutable();
 	double GetV(vector<Particle>, Propagator *);
 	string GetType();
@@ -34,7 +34,7 @@ public:
 	std::string tinkPrmFileName;
 	ofstream inFile;
 	ifstream outFile;
-	CoordUtil coordKeeper;
+	CoordUtil * coordKeeper;
 };
 
 #endif /* V_TINKEREXECUTABLE_H_ */

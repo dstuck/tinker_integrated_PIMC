@@ -9,6 +9,9 @@
 
 Rho_HO::Rho_HO(vector<double> w) {
 	omega = w;
+//      for(int i=0; i<(int)w.size(); i++) {
+//         cout << w[i]/0.00000455633 << endl;
+//      }
 }
 
 Rho_HO::Rho_HO(double w, int N) {

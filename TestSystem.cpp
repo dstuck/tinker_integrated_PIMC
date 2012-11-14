@@ -7,18 +7,11 @@
 
 #include "TestSystem.h"
 
-TestSystem::TestSystem(int nPart, int pSlice, int dim, vector<string> aType, double beta, vector<double> m, CoordUtil coords, PhysicsUtil physics) : System() {
-//	cout << "nPart = " << nPart << "\npSlice = " << pSlice << "\ndim = " << dim << "\nbeta = " << beta << endl;
-//	cout <<"m = ";
-//	for(int i = 0; i < int(m.size()); i++) {
-//		cout << m[i] << ", ";
-//	}
-//	cout << endl;
-	N = nPart;
+TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil physics) : System() {
+	N = coords->numModes;
 	P = pSlice;
 	eps = beta/((double)P);
-	coorDim = dim;
-	//vector<Particle> * part_slice = new vector<Particle>(N);
+	coorDim = coords->dim;
 	vector< vector<Particle> > part_init(P,vector<Particle>(N));
 	part = part_init;
 	oldPart = part_init;
@@ -27,8 +20,6 @@ TestSystem::TestSystem(int nPart, int pSlice, int dim, vector<string> aType, dou
 	oldSliceV.resize(P, 0.0);
 	avgV = 0.0;
 	numSteps = 0;
-      cout << "Size of omega: " << (int)coords.omega.size() << endl;
-      cout << "Size of coords.omega: " << (int)coords.omega.size() << endl;
 //        for(int i=0; i<(int)w.size(); i++) {
 //            coords.omega[i] = w[i];
 //        }
@@ -52,10 +43,7 @@ TestSystem::TestSystem(int nPart, int pSlice, int dim, vector<string> aType, dou
 		V = new V_TinkerExecutable(coords);
 	}
 	else if(!physics.vType.compare("V_Tinker")) {
-//		cout << "Unimplemented type" << endl;
-//		exit(-1);
-LINE
-		V = new V_Tinker(coords, m, eps, beta);
+		V = new V_Tinker(coords, eps, beta);
 	}
 	else if(!physics.vType.compare("V_Morse")) {
 		if(physics.morseAlpha != 0.0 && physics.morseDE != 0.0) {
@@ -66,34 +54,29 @@ LINE
 		}
 	}
 	else if(!physics.vType.compare("V_UCHO")) {
-		V = new V_UCHO(coords.omega);
+		V = new V_UCHO(coords->omega);
 	}
 
 	if(!physics.rhoType.compare("Rho_HO")) {
-		rho = new Rho_HO(coords.omega);
+		rho = new Rho_HO(coords->omega);
 	}
 	else if(!physics.rhoType.compare("Rho_Free")) {
 		rho = new Rho_Free();
 	}
 	else if(!physics.rhoType.compare("Rho_TruncHO")) {
-		rho = new Rho_TruncHO(coords.omega);
+		rho = new Rho_TruncHO(coords->omega);
 	}
 	else {
 		cout << "Invalid rhoType:\t" << physics.rhoType << endl;
 		exit(-1);
 	}
 
-
 	for(int i=0; i<P; i++){
 		for(int j=0; j<N; j++){
-			part[i][j].mass = m[j];
-//			part[i][j].atomType = aType[j];
-			oldPart[i][j].mass = m[j];
-//			oldPart[i][j].atomType = aType[j];
+			part[i][j].mass = coords->reducedMass[j];
+			oldPart[i][j].mass = coords->reducedMass[j];
 		}
 	}
-
-	vector<double> r0;
 
 //*******************************************************
 //*	Initialize Bead Polymer Positions with Random Walks *
@@ -173,6 +156,9 @@ LINE
 	oldEnergy = 1000000;		// TODO: clean this up
 	oldPotE = 100000;
 	ECheckFlag = false;
+//      for(int i=0; i<(int)coords->omega.size(); i++) {
+//         cout << i << "\t" << coords->omega[i]/0.00000455633 << endl;
+//      }
 }
 
 TestSystem::~TestSystem() {

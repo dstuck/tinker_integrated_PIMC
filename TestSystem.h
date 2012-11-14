@@ -30,7 +30,7 @@ using namespace std;
 
 class TestSystem: public System {
 public:
-	TestSystem(int, int, int, vector<string>, double, vector<double>, CoordUtil, PhysicsUtil);
+	TestSystem(int, double, CoordUtil*, PhysicsUtil);
 	virtual ~TestSystem();
 	void CalcEnergy();
 	void CalcPotential();

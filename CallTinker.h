@@ -10,7 +10,7 @@
 
 extern"C" {
 extern void dstuckenergy_(const char*, const int&, const char*, const int&, double&, bool&);
-extern void dstuckvibrate_(const char*, const int&, const int&, const int&, double*, double*);
+extern void dstuckvibrate_(const char*, const int&, const int&, const int&, double*, double*, double*);
 //extern void dstuckmechanic_(const char*, const int&);
 }
 

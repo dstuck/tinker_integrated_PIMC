@@ -10,19 +10,19 @@
 CoordUtil::CoordUtil() {
 }
 
-CoordUtil::CoordUtil(vector <vector < vector <double> > > modes, vector<double> freqs, vector <vector <double> > initPos, vector<string> atomicSymbols, vector<int> params, vector< vector<int> > conn, string tinkName, string prmFile) : normModes(modes) {
+CoordUtil::CoordUtil(double nMode, double nPart, vector <vector < vector <double> > > modes, vector<double> freqs, vector<double> m, vector <vector <double> > initPos, vector<string> atomicSymbols, vector<int> params, vector< vector<int> > conn, string tinkName, string prmFile) : numModes(nMode), numPart(nPart), normModes(modes), omega(freqs), mass(m), initCart(initPos), connectivity(conn), tinkerName(tinkName), prmName(prmFile), paramType(params), atomType(atomicSymbols)  {
 //	normModes = modes;				//normModes[i][j][k] is kth dimension of jth atom for the ith normal mode
 //        omega = freqs;
-         omega = vector<double>(3,0);
-	initCart = initPos;				//initPos[i][j] is jth dimension of ith atom
-	connectivity = conn;			//connectivity[i][c] is the number of the cth atom connected to atom i (not square)
-	tinkerName = tinkName;
-	prmName = prmFile;
-	paramType = params;
-	atomType = atomicSymbols;
-	numModes = modes.size();
-	numPart = modes[0].size();
-	dim = modes[0][0].size();
+//	initCart = initPos;				//initPos[i][j] is jth dimension of ith atom
+//	connectivity = conn;			//connectivity[i][c] is the number of the cth atom connected to atom i (not square)
+//	tinkerName = tinkName;
+//	prmName = prmFile;
+//	paramType = params;
+//	atomType = atomicSymbols;
+//	numModes = modes.size();
+//	numPart = modes[0].size();
+//	dim = modes[0][0].size();
+        dim = 3;
 	if(dim != 3) {
 		cout << "Warning: Not working in xyz coordinates!" << endl;
 	}
@@ -34,9 +34,11 @@ CoordUtil::~CoordUtil() {
 }
 
 vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
-	vector< vector<double> > carts;
-	carts = initCart;
-//	For Normal modes
+	vector< vector<double> > carts(initCart);
+//	for(int i=0; i<(int)initCart.size(); i++) {
+//            carts.push_back(initCart[i]);
+//        }
+//	For Normal modes into Cartesians in Angstroms
 	if(part[0].pos.size()==1) {
 		for(int j=0; j<numPart; j++) {
 			for(int k=0; k<dim; k++) {
@@ -58,6 +60,5 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
 		cout << "Error in CoordUtil: mistaken dimension" << endl;
 		exit(-1);
 	}
-
 	return carts;
 }

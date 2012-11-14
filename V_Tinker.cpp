@@ -8,32 +8,30 @@
 #include "V_Tinker.h"
 
 
-V_Tinker::V_Tinker(CoordUtil coords, vector<double> mass, double eps, double beta) {
-LINE
-	tinkInFileName = coords.tinkerName + ".xyz";
-	tinkOutFileName = coords.tinkerName + ".outTinker";
-	tinkPrmFileName = coords.prmName;
-LINE
-	coordKeeper = coords;
-LINE
+V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coords) {
+	tinkInFileName = coords->tinkerName + ".xyz";
+	tinkOutFileName = coords->tinkerName + ".outTinker";
+	tinkPrmFileName = coords->prmName;
+//	coordKeeper = coords;
 //    Initialize forcefield
 	vector<Particle> parts;
 	Particle p0(0.0, 1);
 	Propagator * rhoFree = new Rho_Free;
-	for(int i=0; i<coordKeeper.numModes; i++) {
+	for(int i=0; i<coordKeeper->numModes; i++) {
 		parts.push_back(p0);
 	}
 	inFile.open(tinkInFileName.c_str());
 	outFile.open(tinkOutFileName.c_str());
-	int N = coordKeeper.numPart;
+	int numPart = coordKeeper->numPart;
 //	Get cartesians from normal modes
-	vector< vector<double> > cartPos = coordKeeper.normalModeToCart(parts);
+//	vector< vector<double> > cartPos = coordKeeper->normalModeToCart(parts);
+	vector< vector<double> > cartPos = coordKeeper->initCart;
 //	Write tinker inputfile
-	inFile << N << endl;
-	for(int i=0; i<N; i++) {
-		inFile << i+1 << "\t" << coordKeeper.atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
-		for(int c=0; c<int(coordKeeper.connectivity[i].size()); c++) {
-				inFile << "\t" << coordKeeper.connectivity[i][c];
+	inFile << numPart << endl;
+	for(int i=0; i<numPart; i++) {
+		inFile << i+1 << "\t" << coordKeeper->atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
+		for(int c=0; c<int(coordKeeper->connectivity[i].size()); c++) {
+				inFile << "\t" << coordKeeper->connectivity[i][c];
 		}
 		inFile << endl;
 	}
@@ -49,31 +47,47 @@ LINE
         dstuckenergy_(tinkIn, inLen, tinkPrm.c_str(), prmLen, tinkEnergy, init);
 
 //    Set up tinker normal modes and frequencies!
-        double tinkModes[N*coordKeeper.numPart*3];
+        int N = coordKeeper->numModes;
+        double tinkModes[N*coordKeeper->numPart*3];
         double tinkFreqs[N];
-        dstuckvibrate_(tinkIn, inLen, N, coordKeeper.numPart, tinkModes, tinkFreqs);
-//      for(int i=0; i<N; i++) {
+        double redMass[N];
+        dstuckvibrate_(tinkIn, inLen, N, coordKeeper->numPart, redMass, tinkModes, tinkFreqs);
+      delete[] tinkIn;
+      coordKeeper->reducedMass.clear();
+      for(int i=0; i<N; i++) {
+         coordKeeper->reducedMass.push_back(redMass[i]*1822.8886);
+      }
+      coordKeeper->omega.clear();
+      for(int i=0; i<N; i++) {
+         coordKeeper->omega.push_back(tinkFreqs[i]*0.00000455633);
+//         coords.omega[i] = tinkFreqs[i]*0.00000455633;
 //         cout << tinkFreqs[i] << endl;
+      }
+      coordKeeper->normModes.clear();
+      coordKeeper->normModes.resize(N);
+      for(int i=0; i<N; i++) {
+         coordKeeper->normModes[i].resize(coordKeeper->numPart);
+         for(int j=0; j<coordKeeper->numPart; j++) {
+            coordKeeper->normModes[i][j].resize(3,0.0);
+            for(int k=0; k<3; k++) {
+               coordKeeper->normModes[i][j][k] = tinkModes[k+3*j+3*coordKeeper->numPart*i];
+            }
+         }
+      }
+//      for(int i=0; i<N; i++) {
+//         cout << tinkFreqs[i]*0.00000455633 << endl;
+//         for(int j=0; j<coordKeeper->numPart; j++) {
+//            for(int k=0; k<3; k++) {
+//               cout << coordKeeper->normModes[i][j][k] << "\t";
+//            }
+//         cout << endl;
+//         }
 //      }
+      double clHarmFull = 0.0;
       for(int i=0; i<N; i++) {
-         for(int j=0; j<coordKeeper.numPart; j++) {
-            for(int k=0; k<3; k++) {
-               coordKeeper.normModes[i][j][k] = tinkModes[k+3*j+3*coordKeeper.numPart*i];
-            }
-         }
+         clHarmFull += coordKeeper->omega[i]/2.0;
       }
-      for(int i=0; i<N; i++) {
-         cout << i << endl;
-         for(int j=0; j<coordKeeper.numPart; j++) {
-            for(int k=0; k<3; k++) {
-//               cout << tinkModes[k+3*j+3*coordKeeper.numPart*i] << "\t";
-               cout << coordKeeper.normModes[i][j][k] << "\t";
-            }
-         cout << endl;
-         }
-      }
-      cout << "exiting after vibrate" << endl;
-      exit(-1);
+      cout << "Harmonic Energy is: " << clHarmFull << endl;
 
 //    Get vEquib
 	double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
@@ -136,43 +150,42 @@ double V_Tinker::GetV(vector<Particle> part, Propagator * rho){
 //      cout << "inFileName: " << tinkInFileName.c_str() << endl;
 
 	double V = 0;
-	int N = coordKeeper.numPart;
+	int N = coordKeeper->numPart;
 	//	Get cartesians from normal modes
-	vector< vector<double> > cartPos = coordKeeper.normalModeToCart(part);
+//	vector< vector<double> > cartPos = coordKeeper->normalModeToCart(part);
+	vector< vector<double> > cartPos = coordKeeper->initCart;
 
 //	Write tinker inputfile
 	inFile << N << endl;
 	for(int i=0; i<N; i++) {
-		inFile << i+1 << "\t" << coordKeeper.atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
-		for(int c=0; c<int(coordKeeper.connectivity[i].size()); c++) {
-				inFile << "\t" << coordKeeper.connectivity[i][c];
+		inFile << i+1 << "\t" << coordKeeper->atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
+		for(int c=0; c<int(coordKeeper->connectivity[i].size()); c++) {
+				inFile << "\t" << coordKeeper->connectivity[i][c];
 		}
 		inFile << endl;
 	}
 	inFile.close();
 
 // Call Tinker
-   bool init = false;
-   int inLen = tinkInFileName.size();
+      bool init = false;
+      int inLen = tinkInFileName.size();
 //   cout << "inLen is: " << inLen << endl;
-   int prmLen = tinkPrmFileName.size();
-   double tinkEnergy = 0.0; 
-   char * tinkIn = new char[120];
-   strcpy(tinkIn, tinkInFileName.c_str());      //So fortran doesn't mess up the original
-   string tinkPrm = tinkPrmFileName;
+      int prmLen = tinkPrmFileName.size();
+      double tinkEnergy = 0.0; 
+      char * tinkIn = new char[120];
+      strcpy(tinkIn, tinkInFileName.c_str());      //So fortran doesn't mess up the original
+      string tinkPrm = tinkPrmFileName;
 //   cout <<  "Prm file is " << tinkPrm;
-   dstuckenergy_(tinkIn, inLen, tinkPrm.c_str(), prmLen, tinkEnergy, init);
-   V = tinkEnergy;
+      dstuckenergy_(tinkIn, inLen, tinkPrm.c_str(), prmLen, tinkEnergy, init);
+      V = tinkEnergy;
 //   cout << "tinkEnergy is " << tinkEnergy << endl;
 	V -= vEquib;
 //	cout << "Unmodified V =\t" << V << endl;
-   V /= hartreeToKcal;
+      V /= hartreeToKcal;
 	V += rho->ModifyPotential(part);
 //	cout << "Modified V =\t" << V << endl;
 	outFile.close();
-
-//	cout << "exiting" << endl;
-//	exit(-1);
+      delete[] tinkIn;
 	return V;
 }
 

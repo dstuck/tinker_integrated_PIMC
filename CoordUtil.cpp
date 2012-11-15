@@ -10,7 +10,7 @@
 CoordUtil::CoordUtil() {
 }
 
-CoordUtil::CoordUtil(double nMode, double nPart, vector <vector < vector <double> > > modes, vector<double> freqs, vector<double> m, vector <vector <double> > initPos, vector<string> atomicSymbols, vector<int> params, vector< vector<int> > conn, string tinkName, string prmFile) : numModes(nMode), numPart(nPart), normModes(modes), omega(freqs), mass(m), initCart(initPos), connectivity(conn), tinkerName(tinkName), prmName(prmFile), paramType(params), atomType(atomicSymbols)  {
+CoordUtil::CoordUtil(double nMode, double nPart, vector <vector < vector <double> > > modes, vector<double> freqs, vector<double> m, vector <vector <double> > initPos, vector<string> atomicSymbols, vector<int> params, vector< vector<int> > conn, string tinkName, string prmFile) : numModes(nMode), numPart(nPart), normModes(modes), omega(freqs), reducedMass(m), initCart(initPos), connectivity(conn), tinkerName(tinkName), prmName(prmFile), paramType(params), atomType(atomicSymbols)  {
 //	normModes = modes;				//normModes[i][j][k] is kth dimension of jth atom for the ith normal mode
 //        omega = freqs;
 //	initCart = initPos;				//initPos[i][j] is jth dimension of ith atom
@@ -50,6 +50,7 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
 	}
 //	For cartesian coordinates
 	else if(part[0].pos.size()==3) {
+            cout << "I shouldn't be here in CoordUtil" << endl;
 		for(int j=0; j<numPart; j++) {
 			for(int k=0; k<3; k++) {
 				carts[j][k] += part[j].pos[k] * 0.52918;				// Converts to A from Bohr radii, value from wikipedia 9/18/12

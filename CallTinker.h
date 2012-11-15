@@ -9,8 +9,8 @@
 #define CALLTINKER_H_
 
 extern"C" {
-extern void dstuckenergy_(const char*, const int&, const char*, const int&, double&, bool&);
-extern void dstuckvibrate_(const char*, const int&, const int&, const int&, double*, double*, double*);
+extern void dstuckenergy_(const int&, int*, double*, double*, const char*, const int&, double&, bool&);
+extern void dstuckvibrate_(int*, double*, double*, const int&, const int&, double*, double*, double*);
 //extern void dstuckmechanic_(const char*, const int&);
 }
 

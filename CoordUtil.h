@@ -30,7 +30,7 @@ public:
 	std::string prmName;
 	vector<string> atomType;
 	vector<int> paramType;
-        vector<double> mass;
+//        vector<double> mass;
         vector<double> reducedMass;
 	vector<double> omega;
 	vector< vector<int> > connectivity;

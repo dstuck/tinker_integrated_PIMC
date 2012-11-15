@@ -26,7 +26,6 @@ public:
 	string vType;
 	double morseDE;
 	double morseAlpha;
-
 	int numInit;
 };
 

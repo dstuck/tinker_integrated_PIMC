@@ -30,13 +30,14 @@ using namespace std;
 
 class TestSystem: public System {
 public:
-	TestSystem(int, double, CoordUtil*, PhysicsUtil);
+	TestSystem(int, double, CoordUtil*, PhysicsUtil *);
 	virtual ~TestSystem();
 	void CalcEnergy();
 	void CalcPotential();
 	void Move(vector<double>, int);
 	void Forget();
 	void Undo();
+	void Reset();
 	double GetWeight();
 	double EstimatorV();
 	double EstimatorE();
@@ -62,6 +63,7 @@ public:
 	int numSteps;
 	Potential * V;
 	Propagator * rho;
+        PhysicsUtil * physics;
 	vector<bool> upToDate;
 	vector<double> sliceV;
 	vector<double> oldSliceV;

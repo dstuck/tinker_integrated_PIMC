@@ -29,7 +29,7 @@ public:
 	string GetType();
 	void Tokenize(const string&, vector<string>&, const string& = " ");
 
-	double vEquib;
+	double vEquib;        //in kcal/mole
 	std::string tinkInFileName;
 	std::string tinkOutFileName;
 	std::string tinkPrmFileName;

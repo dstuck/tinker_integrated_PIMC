@@ -7,7 +7,7 @@
 
 #include "TestSystem.h"
 
-TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil physics) : System() {
+TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil * phys) : System(), physics(phys) {
 	N = coords->numModes;
 	P = pSlice;
 	eps = beta/((double)P);
@@ -39,35 +39,35 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil p
 //	rho = new Rho_HO(w);
 //	rho = new Rho_TruncHO(w);
 
-	if(!physics.vType.compare("V_TinkerExecutable")) {
+	if(!physics->vType.compare("V_TinkerExecutable")) {
 		V = new V_TinkerExecutable(coords);
 	}
-	else if(!physics.vType.compare("V_Tinker")) {
+	else if(!physics->vType.compare("V_Tinker")) {
 		V = new V_Tinker(coords, eps, beta);
 	}
-	else if(!physics.vType.compare("V_Morse")) {
-		if(physics.morseAlpha != 0.0 && physics.morseDE != 0.0) {
-			V = new V_Morse(physics.morseDE, physics.morseAlpha, N);
+	else if(!physics->vType.compare("V_Morse")) {
+		if(physics->morseAlpha != 0.0 && physics->morseDE != 0.0) {
+			V = new V_Morse(physics->morseDE, physics->morseAlpha, N);
 		}
 		else {
 			V = new V_Morse(0.176, 1.4886, N);		//H2
 		}
 	}
-	else if(!physics.vType.compare("V_UCHO")) {
+	else if(!physics->vType.compare("V_UCHO")) {
 		V = new V_UCHO(coords->omega);
 	}
 
-	if(!physics.rhoType.compare("Rho_HO")) {
+	if(!physics->rhoType.compare("Rho_HO")) {
 		rho = new Rho_HO(coords->omega);
 	}
-	else if(!physics.rhoType.compare("Rho_Free")) {
+	else if(!physics->rhoType.compare("Rho_Free")) {
 		rho = new Rho_Free();
 	}
-	else if(!physics.rhoType.compare("Rho_TruncHO")) {
+	else if(!physics->rhoType.compare("Rho_TruncHO")) {
 		rho = new Rho_TruncHO(coords->omega);
 	}
 	else {
-		cout << "Invalid rhoType:\t" << physics.rhoType << endl;
+		cout << "Invalid rhoType:\t" << physics->rhoType << endl;
 		exit(-1);
 	}
 
@@ -115,7 +115,7 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil p
 		}
 	}
 	else {
-		int levyInit = physics.numInit;
+		int levyInit = physics->numInit;
 		int snipBegin;
 		int snipEnd;
 		for (int j=0; j<N; j++) {
@@ -164,6 +164,87 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil p
 TestSystem::~TestSystem() {
 	// TODO Auto-generated destructor stub
 }
+
+void TestSystem::Reset() {
+//*******************************************************
+//*	Initialize Bead Polymer Positions with Random Walks *
+//*******************************************************
+
+//	Initialize all beads to center
+	for(int j=0; j<N; j++) {
+		for(int i=0; i<P; i++) {
+                        part[i][j].pos.clear();
+                        oldPart[i][j].pos.clear();
+			for(int k=0; k<coorDim; k++) {
+				part[i][j].pos.push_back(0.0);
+				oldPart[i][j].pos.push_back(0.0);
+			}
+		}
+	}
+
+	bool singleLevy = false;
+	static int initRanSeed = -time(0);
+	int bead, beadm1;
+	vector <double> levyMean;
+	double levySigma;
+	if(!singleLevy) {
+		for(int j=0; j<N; j++) {
+			for(int s=0; s<P; s++) {
+				bead = (s+1)%P;
+				beadm1 = (s)%P;
+				levyMean = rho->GetLevyMean(part[beadm1][j], part[P-1][j], (double)(P-s), eps, j);
+				levySigma = rho->GetLevySigma((double)(P-s), eps, j) / sqrt(part[0][j].mass);
+//				cout << "levySigma = " << levySigma << endl;
+				for(int k=0; k<coorDim; k++){
+					part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
+					oldPart[bead][j].pos[k] = part[bead][j].pos[k];
+				}
+				upToDate[s] = false;
+			}
+		}
+	}
+	else {
+		int levyInit = physics->numInit;
+		int snipBegin;
+		int snipEnd;
+		for (int j=0; j<N; j++) {
+			for(int round=0; round<P/(levyInit+1); round++) {
+				snipBegin = round*(levyInit+1);
+//				cout << "snipBegin = " << snipBegin << endl;
+				snipEnd = (snipBegin+levyInit+1)%P;
+//				cout << "snipEnd = " << snipEnd << endl;
+//				cout << "round = " << round << "\t j = " << j << endl;
+				for (int s=0; s<levyInit; s++) {
+					bead = (snipBegin+s+1)%P;
+					beadm1 = (snipBegin+s)%P;
+					levyMean = rho->GetLevyMean(part[beadm1][j], part[snipEnd][j], (double)(levyInit-s), eps, j);
+					levySigma = rho->GetLevySigma((double)(levyInit-s), eps, j) / sqrt(part[0][j].mass);
+					for(int k=0; k<coorDim; k++){
+						part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
+					}
+					upToDate[bead] = false;
+				}
+			}
+			int levyLength = P%(levyInit+1) - 2;
+			snipBegin = P-P%(levyInit+1);
+			snipEnd = (snipBegin+levyLength+1);
+			for (int s=0; s<levyLength; s++) {
+				bead = (snipBegin+s+1)%P;
+				beadm1 = (snipBegin+s)%P;
+				levyMean = rho->GetLevyMean(part[beadm1][j], part[snipEnd][j], (double)(levyLength-s), eps, j);
+				levySigma = rho->GetLevySigma((double)(levyLength-s), eps, j) / sqrt(part[0][j].mass);
+				for(int k=0; k<coorDim; k++){
+					part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
+				}
+				upToDate[bead] = false;
+			}
+		}
+	}
+	oldEnergy = 1000000;		// TODO: clean this up
+	oldPotE = 100000;
+	ECheckFlag = false;
+}
+
 
 double TestSystem::GetWeight() {
 	if(ECheckFlag) {

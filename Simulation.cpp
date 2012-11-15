@@ -45,7 +45,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	vector< vector<int> > connectivity;
 	vector< vector<double> > initPos;
 	vector< vector< vector<double> > > modes;				//modes[i][j][k] will the the kth coordinate of the jth atom of the ith normal mode
-	PhysicsUtil physicsParams;
+	PhysicsUtil * physicsParams = new PhysicsUtil();
 
 //*******************************************************
 //*				   Reading in input					    *
@@ -135,19 +135,19 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 						levyNum = atoi(lineTokens[1].c_str());
 					}
 					else if(lineTokens[0].find("levyInit") != std::string::npos) {
-						physicsParams.numInit = atoi(lineTokens[1].c_str());
+						physicsParams->numInit = atoi(lineTokens[1].c_str());
 					}
 					else if(lineTokens[0].find("rhoType") != std::string::npos) {
-						physicsParams.rhoType = lineTokens[1];
+						physicsParams->rhoType = lineTokens[1];
 					}
 					else if(lineTokens[0].find("vType") != std::string::npos) {
-						physicsParams.vType = lineTokens[1];
+						physicsParams->vType = lineTokens[1];
 					}
 					else if(lineTokens[0].find("morseDE") != std::string::npos) {
-						physicsParams.morseDE = atof(lineTokens[1].c_str());
+						physicsParams->morseDE = atof(lineTokens[1].c_str());
 					}
 					else if(lineTokens[0].find("morseAlpha") != std::string::npos) {
-						physicsParams.morseAlpha = atof(lineTokens[1].c_str());
+						physicsParams->morseAlpha = atof(lineTokens[1].c_str());
 					}
 					else {
 						cout << "Unrecognized input name " << lineTokens[0] << " skipped." << endl;
@@ -305,12 +305,11 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 //			}
 //			else {
 //				cout << "Unimplemented atom type. See Simulation.cpp" << endl;
-//				LINE;
 //				exit(-1);
 //			}
 //		}
-	if(physicsParams.numInit<0) {
-		physicsParams.numInit = pSlice-1;
+	if(physicsParams->numInit<0) {
+		physicsParams->numInit = pSlice-1;
 	}
 	string outName = logFileName.substr(0, logFileName.find_first_of("."));
 	epsTemp = beta/((double)pSlice);
@@ -526,6 +525,7 @@ void Simulation::Run(){
            }
            Log();
            simStats->AddVal(energyStats->GetMean());
+           sys->Reset();
       }
       if(maxSim>1) {
          FinalLog();

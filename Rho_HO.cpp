@@ -9,12 +9,13 @@
 
 Rho_HO::Rho_HO(vector<double> w) {
 	omega = w;
-//      for(int i=0; i<(int)w.size(); i++) {
-//         cout << w[i]/0.00000455633 << endl;
+//      for(int i=0; i<(int)omega.size(); i++) {
+//         cout << omega[i]/0.00000455633 << endl;
 //      }
 }
 
 Rho_HO::Rho_HO(double w, int N) {
+        omega.clear();
 	for(int j=0; j<N; j++){
 		omega.push_back(w);
 	}
@@ -42,7 +43,7 @@ double Rho_HO::GetRho(vector<Particle> slice1, vector<Particle> slice2, double e
 }
 
 double Rho_HO::ModifyPotential(vector<Particle> part) {
-	double dV = 0;
+	double dV = 0.0;
 	int dim = part[0].pos.size();
 	for(int j=0; j<(int)part.size(); j++) {
 		for(int k=0; k<dim; k++) {

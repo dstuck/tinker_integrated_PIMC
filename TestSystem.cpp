@@ -11,7 +11,7 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
 	N = coords->numModes;
 	P = pSlice;
 	eps = beta/((double)P);
-	coorDim = coords->dim;
+	coorDim = 1;
 	vector< vector<Particle> > part_init(P,vector<Particle>(N));
 	part = part_init;
 	oldPart = part_init;
@@ -58,7 +58,7 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
 	}
 
 	if(!physics->rhoType.compare("Rho_HO")) {
-		rho = new Rho_HO(coords->omega);
+		rho = new Rho_HO(coords->omega,physics->numFrozModes);
 	}
 	else if(!physics->rhoType.compare("Rho_Free")) {
 		rho = new Rho_Free();
@@ -78,84 +78,9 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
 		}
 	}
 
-//*******************************************************
-//*	Initialize Bead Polymer Positions with Random Walks *
-//*******************************************************
+//    Initialize bead polymers with random walks
+      Reset();
 
-//	Initialize all beads to center
-	for(int j=0; j<N; j++) {
-		for(int i=0; i<P; i++) {
-			for(int k=0; k<coorDim; k++) {
-				part[i][j].pos.push_back(0.0);
-				oldPart[i][j].pos.push_back(0.0);
-			}
-		}
-	}
-
-//	bool randomWalks = true;
-	bool randomWalks = false;
-	static int initRanSeed = -time(0);
-	int bead, beadm1;
-	vector <double> levyMean;
-	double levySigma;
-	if(randomWalks) {
-		for(int j=0; j<N; j++) {
-			for(int s=0; s<P; s++) {
-				bead = (s+1)%P;
-				beadm1 = (s)%P;
-				levyMean = rho->GetLevyMean(part[beadm1][j], part[P-1][j], (double)(P-s), eps, j);
-				levySigma = rho->GetLevySigma((double)(P-s), eps, j) / sqrt(part[0][j].mass);
-//				cout << "levySigma = " << levySigma << endl;
-				for(int k=0; k<coorDim; k++){
-					part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
-					oldPart[bead][j].pos[k] = part[bead][j].pos[k];
-				}
-				upToDate[s] = false;
-			}
-		}
-	}
-	else {
-		int levyInit = physics->numInit;
-		int snipBegin;
-		int snipEnd;
-		for (int j=0; j<N; j++) {
-			for(int round=0; round<P/(levyInit+1); round++) {
-				snipBegin = round*(levyInit+1);
-//				cout << "snipBegin = " << snipBegin << endl;
-				snipEnd = (snipBegin+levyInit+1)%P;
-//				cout << "snipEnd = " << snipEnd << endl;
-//				cout << "round = " << round << "\t j = " << j << endl;
-				for (int s=0; s<levyInit; s++) {
-					bead = (snipBegin+s+1)%P;
-					beadm1 = (snipBegin+s)%P;
-					levyMean = rho->GetLevyMean(part[beadm1][j], part[snipEnd][j], (double)(levyInit-s), eps, j);
-					levySigma = rho->GetLevySigma((double)(levyInit-s), eps, j) / sqrt(part[0][j].mass);
-					for(int k=0; k<coorDim; k++){
-						part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
-					}
-					upToDate[bead] = false;
-				}
-			}
-			int levyLength = P%(levyInit+1) - 2;
-			snipBegin = P-P%(levyInit+1);
-			snipEnd = (snipBegin+levyLength+1);
-			for (int s=0; s<levyLength; s++) {
-				bead = (snipBegin+s+1)%P;
-				beadm1 = (snipBegin+s)%P;
-				levyMean = rho->GetLevyMean(part[beadm1][j], part[snipEnd][j], (double)(levyLength-s), eps, j);
-				levySigma = rho->GetLevySigma((double)(levyLength-s), eps, j) / sqrt(part[0][j].mass);
-				for(int k=0; k<coorDim; k++){
-					part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
-				}
-				upToDate[bead] = false;
-			}
-		}
-	}
-
-
-	oldEnergy = 1000000;		// TODO: clean this up
-	oldPotE = 100000;
-	ECheckFlag = false;
 //      for(int i=0; i<(int)coords->omega.size(); i++) {
 //         cout << i << "\t" << coords->omega[i]/0.00000455633 << endl;
 //      }
@@ -182,64 +107,46 @@ void TestSystem::Reset() {
 		}
 	}
 
-	bool singleLevy = false;
 	static int initRanSeed = -time(0);
 	int bead, beadm1;
 	vector <double> levyMean;
 	double levySigma;
-	if(!singleLevy) {
-		for(int j=0; j<N; j++) {
-			for(int s=0; s<P; s++) {
-				bead = (s+1)%P;
-				beadm1 = (s)%P;
-				levyMean = rho->GetLevyMean(part[beadm1][j], part[P-1][j], (double)(P-s), eps, j);
-				levySigma = rho->GetLevySigma((double)(P-s), eps, j) / sqrt(part[0][j].mass);
-//				cout << "levySigma = " << levySigma << endl;
-				for(int k=0; k<coorDim; k++){
-					part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
-					oldPart[bead][j].pos[k] = part[bead][j].pos[k];
-				}
-				upToDate[s] = false;
-			}
-		}
-	}
-	else {
-		int levyInit = physics->numInit;
-		int snipBegin;
-		int snipEnd;
-		for (int j=0; j<N; j++) {
-			for(int round=0; round<P/(levyInit+1); round++) {
-				snipBegin = round*(levyInit+1);
+        int levyInit = physics->numInit;
+        int snipBegin;
+        int snipEnd;
+//        for (int j=0; j<N; j++) {}
+        for (int j=physics->numFrozModes; j<N; j++) {
+               for(int round=0; round<P/(levyInit+1); round++) {
+                       snipBegin = round*(levyInit+1);
 //				cout << "snipBegin = " << snipBegin << endl;
-				snipEnd = (snipBegin+levyInit+1)%P;
+                       snipEnd = (snipBegin+levyInit+1)%P;
 //				cout << "snipEnd = " << snipEnd << endl;
 //				cout << "round = " << round << "\t j = " << j << endl;
-				for (int s=0; s<levyInit; s++) {
-					bead = (snipBegin+s+1)%P;
-					beadm1 = (snipBegin+s)%P;
-					levyMean = rho->GetLevyMean(part[beadm1][j], part[snipEnd][j], (double)(levyInit-s), eps, j);
-					levySigma = rho->GetLevySigma((double)(levyInit-s), eps, j) / sqrt(part[0][j].mass);
-					for(int k=0; k<coorDim; k++){
-						part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
-					}
-					upToDate[bead] = false;
-				}
-			}
-			int levyLength = P%(levyInit+1) - 2;
-			snipBegin = P-P%(levyInit+1);
-			snipEnd = (snipBegin+levyLength+1);
-			for (int s=0; s<levyLength; s++) {
-				bead = (snipBegin+s+1)%P;
-				beadm1 = (snipBegin+s)%P;
-				levyMean = rho->GetLevyMean(part[beadm1][j], part[snipEnd][j], (double)(levyLength-s), eps, j);
-				levySigma = rho->GetLevySigma((double)(levyLength-s), eps, j) / sqrt(part[0][j].mass);
-				for(int k=0; k<coorDim; k++){
-					part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
-				}
-				upToDate[bead] = false;
-			}
-		}
-	}
+                       for (int s=0; s<levyInit; s++) {
+                               bead = (snipBegin+s+1)%P;
+                               beadm1 = (snipBegin+s)%P;
+                               levyMean = rho->GetLevyMean(part[beadm1][j], part[snipEnd][j], (double)(levyInit-s), eps, j);
+                               levySigma = rho->GetLevySigma((double)(levyInit-s), eps, j) / sqrt(part[0][j].mass);
+                               for(int k=0; k<coorDim; k++){
+                                       part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
+                               }
+                               upToDate[bead] = false;
+                       }
+               }
+               int levyLength = P%(levyInit+1) - 2;
+               snipBegin = P-P%(levyInit+1);
+               snipEnd = (snipBegin+levyLength+1);
+               for (int s=0; s<levyLength; s++) {
+                       bead = (snipBegin+s+1)%P;
+                       beadm1 = (snipBegin+s)%P;
+                       levyMean = rho->GetLevyMean(part[beadm1][j], part[snipEnd][j], (double)(levyLength-s), eps, j);
+                       levySigma = rho->GetLevySigma((double)(levyLength-s), eps, j) / sqrt(part[0][j].mass);
+                       for(int k=0; k<coorDim; k++){
+                               part[bead][j].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &initRanSeed);
+                       }
+                       upToDate[bead] = false;
+               }
+        }
 	oldEnergy = 1000000;		// TODO: clean this up
 	oldPotE = 100000;
 	ECheckFlag = false;
@@ -364,24 +271,25 @@ void TestSystem::Move(vector<double> prob, int levyNum){
 //	*******************************************************
 		levyLength = levyNum;
 //	*******************************************************
-		int iPart = static_cast<int>(N*P*prob[1]);
+		int iPart = static_cast<int>((N-physics->numFrozModes)*P*prob[1]);
 //		int iCoor = static_cast<int>(coorDim*prob[2]);
-		int pickedPart = int(iPart/P);
+		int pickedPart = int(iPart/P)+physics->numFrozModes;
 		int snipBegin = iPart%P;
 		int snipEnd = (snipBegin+levyLength+1)%P;
 
 //		cout << "SnipBegin: " << snipBegin << "\tSnipEnd" << snipEnd << "\tSnipLength:" << snipLength << endl;
-
-		for (int s=0; s<levyLength; s++) {
-			bead = (snipBegin+s+1)%P;
-			beadm1 = (snipBegin+s)%P;
-			levyMean = rho->GetLevyMean(part[beadm1][pickedPart], part[snipEnd][pickedPart], (double)(levyLength-s), eps, pickedPart);
-			levySigma = rho->GetLevySigma((double)(levyLength-s), eps, pickedPart) / sqrt(part[0][pickedPart].mass);
-			for(int k=0; k<coorDim; k++){
-				part[bead][pickedPart].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &seed);
-			}
-			upToDate[bead] = false;
-		}
+                if(N > physics->numFrozModes) {
+                      for (int s=0; s<levyLength; s++) {
+                              bead = (snipBegin+s+1)%P;
+                              beadm1 = (snipBegin+s)%P;
+                              levyMean = rho->GetLevyMean(part[beadm1][pickedPart], part[snipEnd][pickedPart], (double)(levyLength-s), eps, pickedPart);
+                              levySigma = rho->GetLevySigma((double)(levyLength-s), eps, pickedPart) / sqrt(part[0][pickedPart].mass);
+                              for(int k=0; k<coorDim; k++){
+                                      part[bead][pickedPart].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &seed);
+                              }
+                              upToDate[bead] = false;
+                      }
+                }
 	}
 	//*/
 }

@@ -1,0 +1,30 @@
+CXX=icpc
+#CXX=g++
+CXXFLAGS=-O0 -g $(INCLUDES)
+SOURCES := $(wildcard *.cpp)
+OBJECTS := $(patsubst %.cpp,%.o,$(SOURCES))
+DEPFILES := $(patsubst %.cpp,%.d,$(SOURCES))
+
+LDFLAGS=-L/opt/intel/Compiler/11.1/080/Frameworks/mkl/lib/em64t/ -lblas -L/usr/lib/libshell/ -lshell
+.PHONY: clean
+all: aomp2
+
+# Need these soon aomp2.h sort_tuple_list.o  
+aomp2: $(OBJECTS) $(DEPFILES)
+	$(CXX) $(LDFLAGS) $(OBJECTS) -o $@	
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $^
+clean: 
+	-rm aomp2
+	-rm *.o
+install:
+	cp sigShellTuples.h $(QCSRC)/xman/sigShellTuples.h
+	cp sigShellTuples.cpp $(QCSRC)/xman/sigShellTuples.C
+	cp read_timer.cpp $(QCSRC)/xman/read_timer.C
+	cp read_timer.h $(QCSRC)/xman/read_timer.h
+
+$(DEPFILES): %.d: %.cpp
+	set -e; rm -f $@; \
+	$(CXX) -M $< > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$

@@ -27,6 +27,7 @@ public:
 	double morseDE;
 	double morseAlpha;
 	int numInit;
+        int numFrozModes;
 };
 
 #endif /* PHYSICSUTIL_H_ */

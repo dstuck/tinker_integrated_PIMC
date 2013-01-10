@@ -16,7 +16,7 @@ using namespace std;
 
 class Rho_HO: public Propagator {
 public:
-	Rho_HO(vector<double>);
+	Rho_HO(vector<double>, int);
 	Rho_HO(double, int);
 	virtual ~Rho_HO();
 
@@ -29,6 +29,7 @@ public:
 	string GetType();
 
 	vector<double> omega;
+        int numFrozModes;
 };
 
 #endif /* RHOHO_H_ */

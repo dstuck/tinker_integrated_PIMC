@@ -43,16 +43,19 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
       }
       string tinkPrm = tinkPrmFileName;
       dstuckenergy_(nPart, typeVec, xyzCoord, connMat, tinkPrm.c_str(), prmLen, tinkEnergy, init);
-
 //    Set up tinker normal modes and frequencies!
         int N = coordKeeper->numModes;
+
         double tinkModes[N*coordKeeper->numPart*3];
         double tinkFreqs[N];
         double redMass[N];
         dstuckvibrate_(typeVec, xyzCoord, connMat, N, coordKeeper->numPart, redMass, tinkModes, tinkFreqs);
+//      cout << "Using old reduced mass" << endl;
       coordKeeper->reducedMass.clear();
+//      cout << "New reduced mass" << endl;
       for(int i=0; i<N; i++) {
          coordKeeper->reducedMass.push_back(redMass[i]*1822.8886);
+//         cout << coordKeeper->reducedMass[i]/1822.8886 << endl;
       }
       coordKeeper->omega.clear();
       for(int i=0; i<N; i++) {
@@ -80,6 +83,7 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
 //         cout << endl;
 //         }
 //      }
+
       double clHarmFull = 0.0;
       for(int i=0; i<N; i++) {
          clHarmFull += coordKeeper->omega[i]/2.0;
@@ -146,6 +150,21 @@ double V_Tinker::GetV(vector<Particle> part, Propagator * rho){
 //	Get cartesians from normal modes
 	vector< vector<double> > cartPos = coordKeeper->normalModeToCart(part);
 
+/*
+//      Write tinker inputfile
+        tinkInFileName = coordKeeper->tinkerName + ".xyz";
+        inFile.open(tinkInFileName.c_str());
+        inFile << coordKeeper->numPart << endl;
+        for(int i=0; i<coordKeeper->numPart; i++) {
+                inFile << i+1 << "\t" << coordKeeper->atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
+                for(int c=0; c<int(coordKeeper->connectivity[i].size()); c++) {
+                                inFile << "\t" << coordKeeper->connectivity[i][c];
+                }
+                inFile << endl;
+        }
+        inFile.close();
+*/
+
 // Call Tinker
       bool init = false;
       int prmLen = tinkPrmFileName.size();
@@ -170,12 +189,12 @@ double V_Tinker::GetV(vector<Particle> part, Propagator * rho){
       string tinkPrm = tinkPrmFileName;
       dstuckenergy_(nPart, typeVec, xyzCoord, connMat, tinkPrm.c_str(), prmLen, tinkEnergy, init);
       V = tinkEnergy;
-//	cout << "Unmodified V =\t" << V << endl;
+//	cout << "Tinker V =\t" << V << endl;
       V -= vEquib;
       V /= hartreeToKcal;
 //	cout << "Unmodified V =\t" << V << endl;
 	V += rho->ModifyPotential(part);
-	cout << "Modified V =\t" << V << endl;
+//	cout << "Modified V =\t" << V << endl;
 	return V;
 }
 

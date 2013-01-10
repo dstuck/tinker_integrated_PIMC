@@ -25,6 +25,7 @@ public:
 	double GetStDev();
 	double GetMax();
 	double GetMin();
+        void Reset();
 
 //	bool store;
 	int numVals;

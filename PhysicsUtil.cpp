@@ -10,6 +10,7 @@
 PhysicsUtil::PhysicsUtil() {
 //	Makes sure it gets set
 	numInit = -1;
+        numFrozModes = 0;
 }
 
 PhysicsUtil::~PhysicsUtil() {

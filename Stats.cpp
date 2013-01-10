@@ -82,3 +82,12 @@ double Stats::GetMax() {
 double Stats::GetMin() {
 	return minVal;
 }
+
+void Stats::Reset() {
+	numVals = 0;
+	sum = 0;
+	normSum = 0;
+	squareSum = 0;
+	maxVal = 0;
+	minVal = 0;
+}

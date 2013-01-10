@@ -149,6 +149,9 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 					else if(lineTokens[0].find("morseAlpha") != std::string::npos) {
 						physicsParams->morseAlpha = atof(lineTokens[1].c_str());
 					}
+					else if(lineTokens[0].find("numFrozModes") != std::string::npos) {
+						physicsParams->numFrozModes = atof(lineTokens[1].c_str());
+					}
 					else {
 						cout << "Unrecognized input name " << lineTokens[0] << " skipped." << endl;
 					}
@@ -282,6 +285,11 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 		cout << "omega dim = " << omega.size() << " but mass dim = " << mass.size() << endl;
 		exit (-1);
 	}
+        if(int(connectivity.size()) != nPart) {
+		cout << "Error, number of atoms not equal to number of coordinates" << endl;
+		cout << "connectivity dim = " << connectivity.size() << " but nPart = " << nPart << endl;
+		exit (-1);
+        }
 	if(nPart==2) {
 		nMode = 1;		//Linear case!
 	}
@@ -357,7 +365,27 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	logFile << inFileName << endl;
 	logFile << "Potential: " << sys->GetVType() << "\t Propagator: " << sys->GetRhoType() << endl;
 	logFile << "P: "<< pSlice << ", N: "<< nPart << ", Beta: " << beta << ", levyNum: " << levyNum << "\n" << "maxSim: " << maxSim << ", maxStep: " << maxStep << ", sampleFreq: " << sampleFreq << ", convFreq: " << convFreq << ", storeFreq: " << storeFreq << endl;
-
+// TODO: check numfrozmodes <= modes
+        if(physicsParams->numFrozModes>0) {
+            logFile << "Frozen Modes:" << endl;
+        }
+        for(int i=0; i<physicsParams->numFrozModes; i++) {
+            logFile << coords->omega[i]/0.00000455633 << "\t";
+            if((i)%10==9) {
+               logFile << "\n";
+            }
+        }
+        if(physicsParams->numFrozModes>0) {
+            logFile << endl;
+        }
+        logFile << "Active Modes:" << endl;
+        for(int i=physicsParams->numFrozModes; i<(int)coords->omega.size(); i++) {
+            logFile << coords->omega[i]/0.00000455633 << "\t";
+            if((i-physicsParams->numFrozModes)%10==9) {
+               logFile << "\n";
+            }
+        }
+        logFile << endl;
 
 //	srand(time(NULL));
 	idum = new int;
@@ -526,6 +554,7 @@ void Simulation::Run(){
            Log();
            simStats->AddVal(energyStats->GetMean());
            sys->Reset();
+           energyStats->Reset();
       }
       if(maxSim>1) {
          FinalLog();

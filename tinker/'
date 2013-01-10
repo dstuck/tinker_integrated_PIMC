@@ -1,0 +1,591 @@
+c
+c
+c     ###################################################
+c     ##  COPYRIGHT (C)  1990  by  Jay William Ponder  ##
+c     ##              All Rights Reserved              ##
+c     ###################################################
+c
+c     #############################################################
+c     ##                                                         ##
+c     ##  function energy  --  evaluates energy terms and total  ##
+c     ##  subroutine dstuckenergy  --  evaluates energy total    ##
+c     ##                                                         ##
+c     #############################################################
+c
+c
+c     "energy" calls the subroutines to calculate the potential
+c     energy terms and sums up to form the total energy
+c
+c
+      subroutine dstuckvibrate(xyzName, xyzLen, modeNum, partNum,
+     $evectors, evalues)
+      implicit none
+      include 'sizes.i'
+      include 'bound.i'
+      include 'cutoff.i'
+      include 'energi.i'
+      include 'iounit.i'
+      include 'potent.i'
+      include 'rigid.i'
+      include 'vdwpot.i'
+c DES: from initial.f
+c      include 'sizes.i'
+      include 'align.i'
+      include 'atoms.i'
+      include 'bath.i'
+c      include 'bound.i'
+      include 'cell.i'
+      include 'files.i'
+      include 'group.i'
+      include 'inform.i'
+c      include 'iounit.i'
+      include 'keys.i'
+      include 'linmin.i'
+      include 'minima.i'
+      include 'molcul.i'
+      include 'mutant.i'
+      include 'neigh.i'
+      include 'openmp.i'
+      include 'output.i'
+      include 'params.i'
+      include 'pdb.i'
+      include 'precis.i'
+c      include 'rigid.i'
+      include 'scales.i'
+      include 'sequen.i'
+      include 'socket.i'
+      include 'warp.i'
+      include 'zclose.i'
+c DES: from vibrate
+      include 'atmtyp.i'
+      include 'hescut.i'
+      include 'math.i'
+      include 'units.i'
+      include 'usage.i'
+c DES out
+c DES: from mechanic.f misc calls
+c      include 'boxes.i'
+c DES out
+      character*120 xyzName
+      integer xyzLen
+      integer modeNum
+      integer partNum
+      real*8, dimension(modeNum*partnum*3) :: evectors
+      real*8, dimension(modeNum) :: evalues
+c DES: from initial.f
+      real*8 precise
+c DES out
+c DES: from getxyz.f
+      integer ixyz
+      integer freeunit
+      logical exist
+      character*120 xyzfile
+c DES out
+c DES: from vibrate
+      integer i,j,k,m
+      integer ihess
+      integer lext
+      integer nfreq,ndummy
+      integer nvib,ivib
+      integer nview,next
+      integer nlist,ilist
+      integer, allocatable :: list(:)
+      integer, allocatable :: iv(:)
+      integer, allocatable :: hindex(:)
+      integer, allocatable :: hinit(:,:)
+      integer, allocatable :: hstop(:,:)
+      real*8 factor,vnorm
+      real*8 sum,ratio
+c      real*8 scale
+      real*8, allocatable :: xref(:)
+      real*8, allocatable :: yref(:)
+      real*8, allocatable :: zref(:)
+      real*8, allocatable :: mass2(:)
+      real*8, allocatable :: h(:)
+      real*8, allocatable :: eigen(:)
+      real*8, allocatable :: matrix(:)
+      real*8, allocatable :: hdiag(:,:)
+      real*8, allocatable :: vects(:,:)
+      logical query
+      character*1 letter
+      character*7 ext
+      character*120 record
+      character*120 string
+c DES out
+
+c DES: from initial.f
+c     default unit numbers for input and output
+c
+      input = 5
+      iout = 6
+c     cores, thread count and options for OpenMP
+c
+      nproc = 1
+      nthread = 1
+!$    nproc = omp_get_num_procs ()
+!$    nthread = nproc
+!$    call omp_set_num_threads (nthread)
+!$    call omp_set_nested (.true.)
+c
+c     Intel compiler extensions to OpenMP standard
+c
+!$    call kmp_set_stacksize (2**28)
+!$    call kmp_set_blocktime (0)
+c
+c     values of machine precision constants
+c
+      tiny = precise (1)
+      small = precise (2)
+      huge = precise (3)
+c
+c     number of lines in the keyfile
+c
+      nkey = 0
+c
+c     number of lines in the parameter file
+c
+      nprm = 0
+c
+c     number of atoms in the system
+c
+      n = 0
+c
+c     number of molecules in the system
+c
+      nmol = 0
+c
+c     number of unit cell replicates
+c
+      ncell = 0
+c
+c     number of atoms used in superposition
+c
+      nfit = 0
+c
+c     number of mutated atoms in the system
+c
+      nmut = 0
+c
+c     number of bonds added or deleted from Z-matrix
+c
+      nadd = 0
+      ndel = 0
+c
+c     number of atoms in Protein Data Bank format
+c
+      npdb = 0
+c
+c     number of residues and chains in biopolymer sequence
+c
+      nseq = 0
+      nchain = 0
+c
+c     highest numbered previous cycle file
+c
+      nprior = 0
+c
+c     flags for information levels within the program
+c
+      verbose = .false.
+      debug = .false.
+      abort = .false.
+c
+c     flag for use of atom groups
+c
+      use_group = .false.
+c
+c     flags for periodic boundaries
+c
+      use_bounds = .false.
+      use_replica = .false.
+      use_polymer = .false.
+c
+c     flags for temperature and pressure baths
+c
+      isothermal = .false.
+      isobaric = .false.
+c
+c     flags for rebuilding of neighbor lists
+c
+      dovlst = .true.
+      doclst = .true.
+      domlst = .true.
+c
+c     flag for use of rigid bodies
+c
+      use_rigid = .false.
+c
+c     flag to show setting of optimization scale factors
+c
+      set_scale = .false.
+c
+c     flags for external Java socket communication
+c
+      skt_init = .false.
+      use_socket = .false.
+c
+c     flags for potential energy smoothing
+c
+      use_smooth = .false.
+      use_dem = .false.
+      use_gda = .false.
+      use_tophat = .false.
+      use_stophat = .false.
+c
+c     type of coordinates file
+c
+      coordtype = 'NONE'
+c
+c     atomic symbols for elements
+c
+      call initatom
+c
+c     default parameters used by optimizations
+c
+      fctmin = 0.0d0
+      maxiter = 0
+      nextiter = 0
+      iprint = -1
+      iwrite = -1
+      stpmax = 0.0d0
+c DES out
+
+c DES: from getxyz.f
+c     try to get a filename from the command line arguments
+c
+c      call nextarg (xyzfile,exist)
+c      if (exist) then
+c      xyzName = 'test.xyz'
+c      xyzLen = 8;
+      xyzfile(1:xyzLen) = xyzName(1:xyzLen)
+      call basefile (xyzfile)
+      call suffix (xyzfile,'xyz','old')
+      inquire (file=xyzfile, exist=exist)
+      if (exist==.false.) then
+         write(*,*) 'ERROR: Failed to read in xyzFile!!!'
+         write(*,*) xyzfile
+      end if
+c      end if
+c
+c     first open and then read the Cartesian coordinates file
+c
+      coordtype = 'CARTESIAN'
+      ixyz = freeunit ()
+      open (unit=ixyz,file=xyzfile,status='old')
+      rewind (unit=ixyz)
+      call readxyz (ixyz)
+      close (unit=ixyz)
+c
+c     quit if the Cartesian coordinates file contains no atoms
+c
+      if (abort) then
+         write (iout,31)
+   31    format (/,' GETXYZ  --  Cartesian Coordinates File',
+     &              ' does not Contain Any Atoms')
+         call fatal
+      end if
+c DES out
+
+c DES from vibrate.f
+c
+c     perform dynamic allocation of some local arrays
+c
+      nfreq = 3 * nuse
+      allocate (mass2(n))
+      allocate (hinit(3,n))
+      allocate (hstop(3,n))
+      allocate (hdiag(3,n))
+      allocate (hindex(nfreq*(nfreq-1)/2))
+      allocate (h(nfreq*(nfreq-1)/2))
+      allocate (matrix(nfreq*(nfreq+1)/2))
+c
+c     initialize various things needed for vibrations
+c
+      ndummy = 0
+      do i = 1, n
+         if (use(i) .and. atomic(i).eq.0) then
+            ndummy = ndummy + 1
+            mass(i) = 0.001d0
+         end if
+         mass2(i) = sqrt(mass(i))
+      end do
+      nvib = nfreq - 3*ndummy
+c
+c     calculate the Hessian matrix of second derivatives
+c
+      hesscut = 0.0d0
+      call hessian (h,hinit,hstop,hindex,hdiag)
+c
+c     store upper triangle of the Hessian in "matrix"
+c
+      ihess = 0
+      do i = 1, n
+         if (use(i)) then
+            do j = 1, 3
+               ihess = ihess + 1
+               matrix(ihess) = hdiag(j,i)
+               do k = hinit(j,i), hstop(j,i)
+                  m = (hindex(k)+2) / 3
+                  if (use(m)) then
+                     ihess = ihess + 1
+                     matrix(ihess) = h(k)
+                  end if
+               end do
+            end do
+         end if
+      end do
+c
+c     perform dynamic allocation of some local arrays
+c
+      allocate (eigen(nfreq))
+      allocate (vects(nfreq,nfreq))
+c
+c     perform diagonalization to get Hessian eigenvalues
+c
+      call diagq (nfreq,nfreq,matrix,eigen,vects)
+c      write (iout,10)
+c   10 format (/,' Eigenvalues of the Hessian Matrix :',/)
+c      write (iout,20)  (i,eigen(i),i=1,nvib)
+c   20 format (5(i5,f10.3))
+c
+c     store upper triangle of the mass-weighted Hessian matrix
+c
+      ihess = 0
+      do i = 1, n
+         if (use(i)) then
+            do j = 1, 3
+               ihess = ihess + 1
+               matrix(ihess) = hdiag(j,i) / mass(i)
+               do k = hinit(j,i), hstop(j,i)
+                  m = (hindex(k)+2) / 3
+                  if (use(m)) then
+                     ihess = ihess + 1
+                     matrix(ihess) = h(k) / (mass2(i)*mass2(m))
+                  end if
+               end do
+            end do
+         end if
+      end do
+c
+c     diagonalize to get vibrational frequencies and normal modes
+c
+      call diagq (nfreq,nfreq,matrix,eigen,vects)
+      factor = sqrt(convert) / (2.0d0*pi*lightspd)
+      do i = 1, nvib
+         eigen(i) = factor * sign(1.0d0,eigen(i)) * sqrt(abs(eigen(i)))
+      end do
+c      write (iout,30)
+c   30 format (/,' Vibrational Frequencies (cm-1) :',/)
+c      write (iout,40)  (i,eigen(i),i=1,nvib)
+c   40 format (5(i5,f10.3))
+c  DES: Pass frequencies in cm-1 back to V_Tinker
+      do i = 1, modenum
+         evalues(modenum+1-i) = eigen(nfreq+1-i)
+      end do
+c
+c     perform deallocation of some local arrays
+c
+      deallocate (hinit)
+      deallocate (hstop)
+      deallocate (hdiag)
+      deallocate (h)
+      deallocate (matrix)
+c
+c     form Cartesian coordinate displacements from normal modes
+c
+      do i = 1, nvib
+         vnorm = 0.0d0
+         do j = 1, nfreq
+            k = iuse((j+2)/3)
+            vects(j,i) = vects(j,i) / mass2(k)
+            vnorm = vnorm + vects(j,i)**2
+         end do
+         vnorm = sqrt(vnorm)
+         do j = 1, nfreq
+            vects(j,i) = vects(j,i) / vnorm
+         end do
+      end do
+c  DES: Pass frequencies in cm-1 back to V_Tinker
+      do i = 1, modenum
+         do j = 1, partnum
+            do k = 1, 3
+               evectors(k + 3*(j-1) + 3*partnum*(i-1)) = vects(,i+(nfreq-modenum))
+            end do
+         end do
+      end do
+c
+c     perform dynamic allocation of some local arrays
+c
+      allocate (list(nfreq))
+      allocate (iv(nfreq))
+      allocate (xref(n))
+      allocate (yref(n))
+      allocate (zref(n))
+c
+c     try to get output vibrational modes from command line
+c
+c      query = .true.
+c      call nextarg (string,exist)
+c      if (exist) then
+c         query = .false.
+c         letter = string(1:1)
+c         call upcase (letter)
+c         if (letter .eq. 'A') then
+c            nlist = nvib
+c            do i = 1, nlist
+c               list(i) = i
+c            end do
+c         else
+c            nlist = 0
+c            do i = 1, nvib
+c               read (string,*,err=50,end=50)  k
+c               if (k.ge.1 .and. k.le.nvib) then
+c                  nlist = nlist + 1
+c                  list(nlist) = k
+c               else
+c                  k = abs(k)
+c                  call nextarg (string,exist)
+c                  read (string,*,err=50,end=50)  m
+c                  m = min(abs(m),nvib)
+c                  do j = k, m
+c                     nlist = nlist + 1
+c                     list(nlist) = j
+c                  end do
+c               end if
+c               call nextarg (string,exist)
+c            end do
+c   50       continue
+c         end if
+c      end if
+c
+c     ask the user for the vibrational modes to be output
+c
+c      if (query) then
+c         write (iout,60)
+c   60    format (/,' Enter Vibrations to Output [List, A=All',
+c     &              ' or <CR>=Exit] :  ',$)
+c         read (input,70)  record
+c   70    format (a120)
+c         letter = ' '
+c         next = 1
+c         call gettext (record,letter,next)
+c         call upcase (letter)
+c         if (letter .eq. ' ') then
+c            nlist = 0
+c         else if (letter .eq. 'A') then
+c            nlist = nvib
+c            do i = 1, nlist
+c               list(i) = i
+c            end do
+c         else
+c            do i = 1, nvib
+c               iv(i) = 0
+c            end do
+c            read (record,*,err=80,end=80)  (iv(i),i=1,nvib)
+c   80       continue
+c            nlist = 0
+c            i = 1
+c            do while (iv(i) .ne. 0)
+c               k = iv(i)
+c               if (k.ge.1 .and. k.le.nvib) then
+c                  nlist = nlist + 1
+c                  list(nlist) = k
+c               else
+c                  k = abs(k)
+c                  m = min(abs(iv(i+1)),nvib)
+c                  do j = k, m
+c                     nlist = nlist + 1
+c                     list(nlist) = j
+c                  end do
+c                  i = i + 1
+c               end if
+c               i = i + 1
+c            end do
+c         end if
+c      end if
+c
+c     print the vibrational frequencies and normal modes
+c
+c      do ilist = 1, nlist
+c         ivib = list(ilist)
+c         write (iout,90)  ivib,eigen(ivib)
+c   90    format (/,' Vibrational Normal Mode',i6,' with Frequency',
+c     &              f11.3,' cm-1',
+c     &           //,5x,'Atom',5x,'Delta X',5x,'Delta Y',5x,'Delta Z',/)
+c         do i = 1, nuse
+c            j = 3 * (i-1)
+c            write (iout,100)  iuse(i),vects(j+1,ivib),vects(j+2,ivib),
+c     &                        vects(j+3,ivib)
+c  100       format (4x,i5,3f12.6)
+c         end do
+c
+c     create a name for the vibrational displacement file
+c
+c         lext = 3
+c         call numeral (ivib,ext,lext)
+c         xyzfile = filename(1:leng)//'.'//ext(1:lext)
+c         ixyz = freeunit ()
+c         call version (xyzfile,'new')
+c         open (unit=ixyz,file=xyzfile,status='new')
+c
+c     store the original atomic coordinates
+c
+c         do i = 1, n
+c            xref(i) = x(i)
+c            yref(i) = y(i)
+c            zref(i) = z(i)
+c         end do
+c
+c     scale based on the maximum displacement along the mode
+c
+c         scale = 0.0d0
+c         do i = 1, nuse
+c            j = 3 * (i-1)
+c            sum = 0.0d0
+c            do k = 1, 3
+c               sum = sum + vects(j+k,ivib)**2
+c            end do
+c            scale = max(sum,scale)
+c         end do
+c         scale = 0.1d0 * n**(1.0d0/3.0d0) / sqrt(scale)
+c
+c     make file with plus and minus the current vibration
+c
+c         nview = 3
+c         do i = -nview, nview
+c            ratio = scale * dble(i) / dble(nview)
+c            do k = 1, nuse
+c               j = 3 * (k-1)
+c               m = iuse(k)
+c               x(m) = xref(m) + ratio*vects(j+1,ivib)
+c               y(m) = yref(m) + ratio*vects(j+2,ivib)
+c               z(m) = zref(m) + ratio*vects(j+3,ivib)
+c            end do
+c            call prtxyz (ixyz)
+c         end do
+c         close (unit=ixyz)
+c
+c     restore the original atomic coordinates
+c
+c         do i = 1, n
+c            x(i) = xref(i)
+c            y(i) = yref(i)
+c            z(i) = zref(i)
+c         end do
+c      end do
+c
+c     perform deallocation of some local arrays
+c
+      deallocate (list)
+      deallocate (iv)
+      deallocate (mass2)
+      deallocate (xref)
+      deallocate (yref)
+      deallocate (zref)
+      deallocate (eigen)
+      deallocate (vects)
+c  DES note: may need to call final.f??
+c  DES out
+
+      return
+      end

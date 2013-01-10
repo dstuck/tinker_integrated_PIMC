@@ -7,11 +7,7 @@
 
 #include "Rho_HO.h"
 
-Rho_HO::Rho_HO(vector<double> w) {
-	omega = w;
-//      for(int i=0; i<(int)omega.size(); i++) {
-//         cout << omega[i]/0.00000455633 << endl;
-//      }
+Rho_HO::Rho_HO(vector<double> w, int nFrozModes) : omega(w), numFrozModes(nFrozModes) {
 }
 
 Rho_HO::Rho_HO(double w, int N) {
@@ -60,12 +56,18 @@ double Rho_HO::Estimate(vector<Particle> slice1, vector<Particle> slice2, double
  * 	Estimator taken from Whitfield and Martyna, J. Chem. Phys. 126, 074104 (2007) with missing factor of 1/2 added to term 2
  */
 	if(omega.size() != slice1.size()) {
+                cout << omega.size() << " frequencies for " << slice1.size() << " modes." << endl;
 		cout << "Error! Number of particles not equal to number of frequencies! Exiting with -99999." << endl;
 		return -99999;
 	}
 
 	double est = 0;
-	for(int j=0; j<(int)slice1.size(); j++) {
+	for(int j=0; j< numFrozModes; j++) {
+		for(int k=0; k<(int)slice1[j].pos.size(); k++) {
+			est += omega[j]/2.0/tanh(eps*(double)P*omega[j]);
+		}
+	}
+	for(int j=numFrozModes; j<(int)slice1.size(); j++) {
 		for(int k=0; k<(int)slice1[j].pos.size(); k++) {
 			est += omega[j]/2.0/tanh(eps*omega[j]);
 			est += -slice1[j].mass*omega[j]*omega[j]/2.0/tanh(eps*omega[j])/sinh(eps*omega[j])*(slice1[j].pos[k]-slice2[j].pos[k])*(slice1[j].pos[k]-slice2[j].pos[k]);

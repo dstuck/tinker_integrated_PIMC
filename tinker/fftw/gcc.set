@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export CC='/usr/bin/gcc'
+export CPP='/usr/bin/g++'

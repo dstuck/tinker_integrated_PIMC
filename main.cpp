@@ -5,6 +5,8 @@
 using namespace std;
 
 int main(int argc, char *argv[]){
+//    Accepts inputs as "pimcTinker infile.pin outfile.out prmfile.prm"
+
 //	Make sure only one input
 	if(argc<2) {
 		cout << "Error: Requires an input file!" << endl;
@@ -26,10 +28,11 @@ int main(int argc, char *argv[]){
 	}
 	std::string prmFile;
 	if(argc==4) {
-		prmFile = std::string(argv[2]);
+		prmFile = std::string(argv[3]);
 	}
 	else {
-		prmFile = std::string("~/projects/PIMC/sulfate_water.prm");
+//		prmFile = std::string("~/projects/PIMC/sulfate_water.prm");
+		prmFile = std::string("/Users/dstuck/GoogleDrive/UCBChemistry/Research/pimc/pimcCode/tinker_integrated_PIMC/sulfate_water.prm");
 	}
 	Simulation sim(inFile, outFile, prmFile);
 	sim.Run();

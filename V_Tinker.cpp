@@ -59,7 +59,14 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
       }
       coordKeeper->omega.clear();
       for(int i=0; i<N; i++) {
-         coordKeeper->omega.push_back(tinkFreqs[i]*0.00000455633);
+// Don't want frequencies == 0      TODO: double check this
+         if(tinkFreqs[i] < 1.0) {
+            cout << "Frequency of " << tinkFreqs[i] << " set to 0.09 cm-1" << endl;
+            coordKeeper->omega.push_back(0.00000455633);
+         }
+         else {
+            coordKeeper->omega.push_back(tinkFreqs[i]*0.00000455633);
+         }
 //         coordKeeper.omega[i] = tinkFreqs[i]*0.00000455633;
 //         cout << tinkFreqs[i] << endl;
       }

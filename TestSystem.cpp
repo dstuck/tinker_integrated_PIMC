@@ -155,13 +155,16 @@ void TestSystem::Reset() {
 
 double TestSystem::GetWeight() {
 	if(ECheckFlag) {
-		cout << "I shouldn't be here!" << endl;
+		cout << "I shouldn't be here! Non-Levy flights have been deprecated" << endl;
+        exit(-1);
 		CalcEnergy();
 		return energy;
 	}
 	else {
 		CalcPotential();
-		return potE;
+//		return potE*0.7;
+		return potE*physics->lambdaTI;
+//		return potE;
 	}
 }
 
@@ -172,7 +175,7 @@ double TestSystem::GetOldWeight() {
 		return oldEnergy;
 	}
 	else {
-		return oldPotE;
+		return oldPotE*physics->lambdaTI;
 	}
 }
 
@@ -228,6 +231,7 @@ void TestSystem::CalcPotential(){
 			sliceV[i] = V->GetV(part[i], rho);
 		}
 		upToDate[i] = true;
+//		potE += sliceV[i]*physics->lambdaTI;
 		potE += sliceV[i];
 	}
 }
@@ -327,4 +331,8 @@ string TestSystem::GetVType() {
 
 string TestSystem::GetRhoType() {
 	return rho->GetType();
+}
+
+PhysicsUtil* TestSystem::GetPhysics() {
+	return physics;
 }

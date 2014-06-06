@@ -45,6 +45,7 @@ public:
 	vector< vector<Particle> > GetParticle();
 	string GetVType();
 	string GetRhoType();
+	PhysicsUtil* GetPhysics();
 	double Debug();
 
 	bool ECheckFlag;
@@ -63,7 +64,7 @@ public:
 	int numSteps;
 	Potential * V;
 	Propagator * rho;
-        PhysicsUtil * physics;
+    PhysicsUtil * physics;
 	vector<bool> upToDate;
 	vector<double> sliceV;
 	vector<double> oldSliceV;

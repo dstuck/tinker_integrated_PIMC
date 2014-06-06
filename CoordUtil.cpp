@@ -10,7 +10,7 @@
 CoordUtil::CoordUtil() {
 }
 
-CoordUtil::CoordUtil(int nMode, int nPart, vector <vector < vector <double> > > modes, vector<double> freqs, vector<double> m, vector <vector <double> > initPos, vector<string> atomicSymbols, vector<int> params, vector< vector<int> > conn, string tinkName, string prmFile) : numModes(nMode), numPart(nPart), normModes(modes), omega(freqs), reducedMass(m), initCart(initPos), connectivity(conn), tinkerName(tinkName), prmName(prmFile), paramType(params), atomType(atomicSymbols)  {
+CoordUtil::CoordUtil(int nMode, int nPart, vector <vector < vector <double> > > modes, vector<double> freqs, vector<double> m, vector <vector <double> > initPos, vector<string> atomicSymbols, vector<int> params, vector< vector<int> > conn, string tinkName, string prmFile, bool readW) : numModes(nMode), numPart(nPart), normModes(modes), omega(freqs), reducedMass(m), initCart(initPos), connectivity(conn), tinkerName(tinkName), prmName(prmFile), paramType(params), atomType(atomicSymbols), readOmega(readW)  {
 //	normModes = modes;				//normModes[i][j][k] is kth dimension of jth atom for the ith normal mode
 //        omega = freqs;
 //	initCart = initPos;				//initPos[i][j] is jth dimension of ith atom

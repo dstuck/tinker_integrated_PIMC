@@ -68,7 +68,8 @@ c DES out
       character*120 prmName
       integer prmLen
       real*8 eOut
-      logical initialize
+c      logical initialize
+      integer initialize
       real*8 energy
       real*8 cutoff
 c DES: from initial.f
@@ -81,7 +82,8 @@ c DES out
 c DES: from getprm.f
       logical useprm
       integer iprm
-      character*120 prmfile
+c      character*120 prmfile
+      character(len=prmLen) prmfile
       character*120 record
 c DES out 
 c DES: from readxyz.f
@@ -289,7 +291,7 @@ c
 c DES end of readxyz
 c DES out
 
-      if(initialize) then
+      if(initialize.NE.0) then
 c DES: from mechanic.f
 c
 c     set the bonded connectivity lists and active atoms
@@ -369,6 +371,7 @@ c      prmLen = 20
       nprm = 0
       if (useprm) then
          iprm = freeunit ()
+c         write (*,*) "prmfile = ", prmfile
          open (unit=iprm,file=prmfile,status='old')
          rewind (unit=iprm)
          do while (.true.)

@@ -1,4 +1,4 @@
-CXX=icpc
+#CXX=icpc
 #CXX=g++
 #CXXFLAGS=-O0 -g $(INCLUDES)
 CXXFLAGS=-O0 -g -DDEBUG

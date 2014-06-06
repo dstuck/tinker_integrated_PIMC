@@ -24,6 +24,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 //	beta = 5250;	//60 K
  */
         maxSim = 1;
+        bool readOmega = false;
 	int nPart = 0;
 	int pSlice = 0;
 	int nMode;
@@ -39,6 +40,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 //	}
 //	int a = 1;	// Atomic number
 	levyNum = 30;
+    numTI = 0;
 	vector<double> mass;
 	vector<string> atomType;
 	vector<int> paramType;
@@ -151,6 +153,16 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 					}
 					else if(lineTokens[0].find("numFrozModes") != std::string::npos) {
 						physicsParams->numFrozModes = atof(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("numTI") != std::string::npos) {
+                                            if(atof(lineTokens[1].c_str())>0) {
+					        numTI=atof(lineTokens[1].c_str());
+                                            }
+					}
+					else if(lineTokens[0].find("readOmega") != std::string::npos) {
+                                            if(atof(lineTokens[1].c_str())>0) {
+                                                readOmega = true;
+                                            }
 					}
 					else {
 						cout << "Unrecognized input name " << lineTokens[0] << " skipped." << endl;
@@ -294,6 +306,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 		nMode = 1;		//Linear case!
 	}
 	else {
+// TODO: Doesn't work for linear molecules!
 		nMode = nPart*3-6;
 	}
 	coorDim = 1;
@@ -342,11 +355,14 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	}
 */
 
-	CoordUtil * coords = new CoordUtil(nMode, nPart, modes, omega, mass, initPos, atomType, paramType, connectivity, outName, prmFile);
+	CoordUtil * coords = new CoordUtil(nMode, nPart, modes, omega, mass, initPos, atomType, paramType, connectivity, outName, prmFile, readOmega);
 	sys = new TestSystem(pSlice, beta, coords, physicsParams);
 	simStats = new Stats();
+	simPotStats = new Stats();
+	simComboStats = new Stats();
 	energyStats = new Stats();
 	potentialStats = new Stats();
+	comboStats = new Stats();
 	convergenceStats = new Stats();
 	acceptanceStats = new Stats();
 	xStats = new Stats();
@@ -448,6 +464,7 @@ void Simulation::Sample(){
 	if((stepNum > sampleStart)&&(stepNum%sampleFreq==0)) {
 		energyStats->AddVal(sys->EstimatorE());
 		potentialStats->AddVal(sys->EstimatorV());
+		comboStats->AddVal(sys->EstimatorV()*sys->EstimatorE());
 		vector< vector<Particle>  > part = sys->GetParticle();
 		for(int i=0; i<(int)part.size(); i++) {
 			for(int j=0; j<(int)part[0].size(); j++) {
@@ -516,7 +533,19 @@ void Simulation::FinalLog() {
 	struct tm * current = localtime( & t );
         logFile << "****** " << maxSim << " Jobs Finished ******" << endl;
 	logFile << "Mean Energy: " << simStats->GetMean() << endl;
+	logFile << "Mean Potential: " << simPotStats->GetMean() << endl;
+	logFile << "Mean Combo: " << simComboStats->GetMean() << endl;
 	logFile << "Standard Deviation: " << simStats->GetStDev() << endl;
+	logFile << "Potential Standard Deviation: " << simPotStats->GetStDev() << endl;
+	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
+}
+
+void Simulation::TILog(double dG, double dGVar) {
+	time_t t = time(0);
+	struct tm * current = localtime( & t );
+        logFile << "****** " << numTI << " TI Points Finished ******" << endl;
+	logFile << "Free Energy: " << dG << endl;
+	logFile << "Standard Deviation: " << dGVar << endl;
 	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
 }
 
@@ -532,6 +561,7 @@ void Simulation::Store() {
 
 
 void Simulation::Run(){
+    if(numTI==0){
       for(int simNum = 0; simNum<maxSim; simNum++) {
            for(stepNum=0; stepNum<maxStep; stepNum++){
                    TakeStep();
@@ -553,12 +583,79 @@ void Simulation::Run(){
            }
            Log();
            simStats->AddVal(energyStats->GetMean());
+           simPotStats->AddVal(potentialStats->GetMean());
+           simComboStats->AddVal(comboStats->GetMean());
            sys->Reset();
            energyStats->Reset();
+           potentialStats->Reset();
+           comboStats->Reset();
       }
       if(maxSim>1) {
          FinalLog();
       }
+    }
+// Running thermodynamic integration
+    else {
+        vector<double> gPoints;
+        vector<double> gWeights;
+        if(numTI==11) {
+            GetLinearQuad(numTI,gPoints,gWeights);
+        }
+        else {
+            GetGaussianQuad(numTI,gPoints,gWeights);
+        }
+        double energyPoints = 0.0;          //TODO: Remove this
+        double energyStDevPoints = 0.0;     //TODO: Remove this
+        double potentialPoints = 0.0;
+        double potentialStDevPoints = 0.0;
+        for(int pLam=0; pLam<numTI; pLam++) {
+//      Set the lambda value remembering to convert from [-1,1] range to [0,1] range
+            sys->GetPhysics()->lambdaTI=0.5*(gPoints[pLam]+1);
+            for(int simNum = 0; simNum<maxSim; simNum++) {
+               for(stepNum=0; stepNum<maxStep; stepNum++){
+                       TakeStep();
+                       if (Check()) {
+                               Update();
+                       } else {
+                               Revert();
+                       }
+                       Sample();
+                       if (storeFreq!=0 && (stepNum+1)%storeFreq==0){					//Write statistics to the log.txt file every storeFreq step
+                               Store();
+                       }
+               }
+               if(maxSim==1) {
+                   FinalPrint();
+               }
+               else {
+                   logFile << "****** Finished Simulation " << simNum << " ******" << endl;
+               }
+               Log();
+               simStats->AddVal(energyStats->GetMean());
+               simPotStats->AddVal(potentialStats->GetMean());
+//  DES Note:   Adding multiplication by 2 lambda here rather than during simulation
+//              potentialStats has no clue that we're running TI
+//               simPotStats->AddVal(potentialStats->GetMean()*2*sys->GetPhysics()->lambdaTI);
+               simComboStats->AddVal(comboStats->GetMean());
+               sys->Reset();
+               energyStats->Reset();
+               potentialStats->Reset();
+               comboStats->Reset();
+            }
+            logFile << "Run with lambda = " << sys->GetPhysics()->lambdaTI << endl;
+            if(maxSim>1) {
+                FinalLog();
+            }
+            energyPoints += simStats->GetMean() * 0.5 * gWeights[pLam];
+            energyStDevPoints += simStats->GetStDev() * 0.5 * gWeights[pLam];
+            potentialPoints += simPotStats->GetMean() * 0.5 * gWeights[pLam];
+            potentialStDevPoints += simPotStats->GetStDev() * 0.5 * gWeights[pLam];
+            simStats->Reset();
+            simPotStats->Reset();
+            simComboStats->Reset();
+        }
+        TILog(potentialPoints, potentialStDevPoints);
+    }
 }
 
 
@@ -583,5 +680,140 @@ void Simulation::Tokenize(const string& str, vector<string>& tokens, const strin
         lastPos = str.find_first_not_of(delimiters, pos);
         // Find next "non-delimiter"
         pos = str.find_first_of(delimiters, lastPos);
+    }
+}
+
+// For given number of points, nti, return points and weight for numerical integration
+// using Gauss-Legendre quadrature http://en.wikipedia.org/wiki/Gaussian_quadrature.
+// Uses limited table for now, but could implement Gautschi's theorem for general soln.
+// Gives exact integral for polynomials of degree nti.
+void Simulation::GetGaussianQuad(int nti, vector<double>& points, vector<double>& weights) {
+    points.clear();
+    weights.clear();
+    if(nti==0) {
+        cout << "ERROR: nti = 0 in Simulation::GetGaussianQuad" << endl;
+        exit(-1);
+    }
+    else if(nti==1) {
+        points.push_back(0.0);
+        weights.push_back(2.0);
+    }
+    else if(nti==2) {
+        points.push_back(-0.577350);
+        weights.push_back(1.0);
+        points.push_back(0.577350);
+        weights.push_back(1.0);
+    }
+    else if(nti==3) {
+        points.push_back(-0.774596);
+        weights.push_back(0.5555556);
+        points.push_back(0.0);
+        weights.push_back(0.888889);
+        points.push_back(0.774596);
+        weights.push_back(0.5555556);
+    }
+    else if(nti==4) {
+        points.push_back(-0.861136);
+        weights.push_back(0.34785);
+        points.push_back(-0.339981);
+        weights.push_back(0.652145);
+        points.push_back(0.339981);
+        weights.push_back(0.652145);
+        points.push_back(0.861136);
+        weights.push_back(0.34785);
+    }
+    else {
+        cout << "ERROR: nti > 4 not implemented yet in Simulation::GetGaussianQuad" << endl;
+        exit(-1);
+    }
+}
+
+void Simulation::GetLobattoQuad(int nti, vector<double>& points, vector<double>& weights) {
+    points.clear();
+    weights.clear();
+    if(nti<3) {
+        cout << "ERROR: nti < 3 in Simulation::GetLobattoQuad" << endl;
+        exit(-1);
+    }
+    else if(nti==3) {
+        points.push_back(-1.0);
+        weights.push_back(0.333333);
+        points.push_back(0.0);
+        weights.push_back(1.333333);
+        points.push_back(1.0);
+        weights.push_back(0.333333);
+    }
+    else if(nti==4) {
+        points.push_back(-1.0);
+        weights.push_back(0.166667);
+        points.push_back(-0.447214);
+        weights.push_back(0.833333);
+        points.push_back(0.447214);
+        weights.push_back(0.833333);
+        points.push_back(1);
+        weights.push_back(0.166667);
+    }
+    else if(nti==5) {
+        points.push_back(-1.0);
+        weights.push_back(0.1);
+        points.push_back(-0.654654);
+        weights.push_back(0.544444);
+        points.push_back(0.0);
+        weights.push_back(0.711111);
+        points.push_back(0.654654);
+        weights.push_back(0.544444);
+        points.push_back(1);
+        weights.push_back(0.1);
+    }
+    else if(nti==6) {
+        points.push_back(-1.0);
+        weights.push_back(0.066667);
+        points.push_back(-0.765055);
+        weights.push_back(0.378475);
+        points.push_back(-0.285232);
+        weights.push_back(0.554858);
+        points.push_back(0.285232);
+        weights.push_back(0.554858);
+        points.push_back(0.765055);
+        weights.push_back(0.378475);
+        points.push_back(1);
+        weights.push_back(0.066667);
+    }
+    else {
+        cout << "ERROR: nti > 4 not implemented yet in Simulation::GetGaussianQuad" << endl;
+        exit(-1);
+    }
+}
+
+void Simulation::GetLinearQuad(int nti, vector<double>& points, vector<double>& weights) {
+    points.clear();
+    weights.clear();
+    if(nti!=11) {
+        cout << "ERROR: nti != 11 in Simulation::GetLobattoQuad" << endl;
+        exit(-1);
+    }
+    else {
+        points.push_back(-1.0);
+        weights.push_back(1.0/11.0);
+        points.push_back(-0.8);
+        weights.push_back(2.0/11.0);
+        points.push_back(-0.6);
+        weights.push_back(2.0/11.0);
+        points.push_back(-0.4);
+        weights.push_back(2.0/11.0);
+        points.push_back(-0.2);
+        weights.push_back(2.0/11.0);
+        points.push_back(0.0);
+        weights.push_back(2.0/11.0);
+        points.push_back(0.2);
+        weights.push_back(2.0/11.0);
+        points.push_back(0.4);
+        weights.push_back(2.0/11.0);
+        points.push_back(0.6);
+        weights.push_back(2.0/11.0);
+        points.push_back(0.8);
+        weights.push_back(2.0/11.0);
+        points.push_back(1.0);
+        weights.push_back(1.0/11.0);
     }
 }

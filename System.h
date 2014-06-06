@@ -9,6 +9,7 @@
 #define SYSTEM_H_
 #include "Particle.h"
 #include <vector>
+class PhysicsUtil;
 
 class System {
 public:
@@ -19,7 +20,7 @@ public:
 	virtual void Move(vector<double>, int) = 0;
 	virtual void Forget() = 0;
 	virtual void Undo() = 0;
-        virtual void Reset() = 0;
+    virtual void Reset() = 0;
 	virtual double GetWeight() = 0;
 	virtual double EstimatorE() = 0;
 	virtual double EstimatorV() = 0;
@@ -28,6 +29,7 @@ public:
 	virtual double Debug() = 0;
 	virtual string GetVType() = 0;
 	virtual string GetRhoType() = 0;
+    virtual PhysicsUtil* GetPhysics();
 
 };
 

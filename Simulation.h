@@ -35,10 +35,14 @@ class Simulation {
 		void WritePosToFile();
 		void Log();
 		void FinalLog();
+		void TILog(double,double);
 		void Store();
 		void Tokenize(const string&, vector<string>&, const string& = " ");
+        void GetGaussianQuad(int, vector<double>&, vector<double>&);
+        void GetLobattoQuad(int, vector<double>&, vector<double>&);
+        void GetLinearQuad(int, vector<double>&, vector<double>&);
 
-      int maxSim;
+        int maxSim;
 		int stepNum;      //TODO: Remove
 		int maxStep;
 		int sampleStart;
@@ -46,6 +50,7 @@ class Simulation {
 		int convFreq;
 		int storeFreq;
 		int levyNum;
+        int numTI;
 		int * idum;
 //		int * idum2;
 		double beta;			//TODO: Remove
@@ -56,8 +61,11 @@ class Simulation {
 		ofstream posFile;
 		ofstream logFile;
 		Stats * simStats;
+		Stats * simPotStats;
+		Stats * simComboStats;      //TODO: Remove
 		Stats * energyStats;
 		Stats * potentialStats;
+		Stats * comboStats;
 		Stats * convergenceStats;
 		Stats * acceptanceStats;
 		Stats * xStats;		//TODO: Remove

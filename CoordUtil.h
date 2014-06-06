@@ -18,11 +18,12 @@ using namespace std;
 class CoordUtil {
 public:
 	CoordUtil();
-	CoordUtil(int, int, vector< vector< vector<double> > >, vector<double>, vector<double>, vector< vector<double> >, vector<string>, vector<int>, vector< vector<int> >, string, string);
+	CoordUtil(int, int, vector< vector< vector<double> > >, vector<double>, vector<double>, vector< vector<double> >, vector<string>, vector<int>, vector< vector<int> >, string, string,bool);
 	virtual ~CoordUtil();
 
 	vector< vector<double> > normalModeToCart(vector<Particle>);
 
+        bool readOmega;
 	int numModes;
 	int numPart;
 	int dim;

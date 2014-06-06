@@ -31,7 +31,7 @@ class Simulation {
 		void Revert();
 		void Sample();
 		void Run();
-		void FinalPrint();
+		void FinalPrint();     //TODO: Remove
 		void WritePosToFile();
 		void Log();
 		void FinalLog();
@@ -62,15 +62,13 @@ class Simulation {
 		ofstream logFile;
 		Stats * simStats;
 		Stats * simPotStats;
-		Stats * simComboStats;      //TODO: Remove
+//		Stats * simComboStats;      //TODO: Remove
 		Stats * energyStats;
 		Stats * potentialStats;
-		Stats * comboStats;
+//		Stats * comboStats;
 		Stats * convergenceStats;
 		Stats * acceptanceStats;
-		Stats * xStats;		//TODO: Remove
-		Stats * yStats;		//TODO: Remove
-		Stats * zStats;		//TODO: Remove
+//		Stats * xStats;		//TODO: Remove
 		System * sys;
 };
 

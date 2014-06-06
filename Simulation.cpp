@@ -359,13 +359,13 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	sys = new TestSystem(pSlice, beta, coords, physicsParams);
 	simStats = new Stats();
 	simPotStats = new Stats();
-	simComboStats = new Stats();
+//	simComboStats = new Stats();
 	energyStats = new Stats();
 	potentialStats = new Stats();
-	comboStats = new Stats();
+//	comboStats = new Stats();
 	convergenceStats = new Stats();
 	acceptanceStats = new Stats();
-	xStats = new Stats();
+//	xStats = new Stats();
 
 //	posFileName = "SHO.xyz";
 //	posFile.open(posFileName.c_str());
@@ -464,13 +464,15 @@ void Simulation::Sample(){
 	if((stepNum > sampleStart)&&(stepNum%sampleFreq==0)) {
 		energyStats->AddVal(sys->EstimatorE());
 		potentialStats->AddVal(sys->EstimatorV());
-		comboStats->AddVal(sys->EstimatorV()*sys->EstimatorE());
+//		comboStats->AddVal(sys->EstimatorV()*sys->EstimatorE());
 		vector< vector<Particle>  > part = sys->GetParticle();
+/* xstats
 		for(int i=0; i<(int)part.size(); i++) {
 			for(int j=0; j<(int)part[0].size(); j++) {
 				xStats->AddVal(part[i][j].pos[0]-part[(i+1)%part.size()][j].pos[0]);
 			}
 		}
+*/
 // To restore function uncomment posFile above
 //		if((stepNum-sampleStart)/(double)sampleFreq < 5000) {
 //			WritePosToFile();
@@ -478,18 +480,19 @@ void Simulation::Sample(){
 	}
 }
 
+//TODO:  Delete this
 void Simulation::FinalPrint() {
-	cout << " ****Simulation Finished****" << endl;
+	logFile << " ****Simulation Finished****" << endl;
+/*
 	cout << "Mean Energy: " << energyStats->GetMean() << endl;
-//	cout << "Energy RMS: " << energyStats->GetRMS() << endl;
-//	cout << "Energy Variance: " << energyStats->GetVariance() << endl;
-//	cout << "Energy Convergence: " << convergenceStats->GetVariance() << endl;
 	cout << "Energy Convergence: " << convergenceStats->GetStDev() << endl;
 	cout << "Percent Convergence: " << convergenceStats->GetStDev()/convergenceStats->GetMeanAbs()*100.0 << endl;
 	cout << "Mean Potential: " << potentialStats->GetMean() << endl;
 	cout << "Mean X Position: " << xStats->GetMean() << endl;
 	cout << "RMS X Position: " << xStats->GetRMS() << endl;
 	cout << "Acceptance probability: " << acceptanceStats->GetMean() << endl;
+*/
+         Log();
 }
 
 void Simulation::WritePosToFile() {
@@ -522,8 +525,9 @@ void Simulation::Log() {
 	logFile << "Mean Energy: " << energyStats->GetMean() << endl;
 	logFile << "Energy Convergence: " << convergenceStats->GetStDev() << endl;
 	logFile << "Mean Potential: " << potentialStats->GetMean() << endl;
-	logFile << "Mean X Position: " << xStats->GetMean() << endl;
-	logFile << "RMS X Position: " << xStats->GetRMS() << endl;
+	logFile << "Potential Convergence: " << potentialStats->GetStDev() << endl;
+//	logFile << "Mean X Position: " << xStats->GetMean() << endl;
+//	logFile << "RMS X Position: " << xStats->GetRMS() << endl;
 	logFile << "Acceptance probability: " << acceptanceStats->GetMean() << endl;
 	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
 }
@@ -534,7 +538,6 @@ void Simulation::FinalLog() {
         logFile << "****** " << maxSim << " Jobs Finished ******" << endl;
 	logFile << "Mean Energy: " << simStats->GetMean() << endl;
 	logFile << "Mean Potential: " << simPotStats->GetMean() << endl;
-	logFile << "Mean Combo: " << simComboStats->GetMean() << endl;
 	logFile << "Standard Deviation: " << simStats->GetStDev() << endl;
 	logFile << "Potential Standard Deviation: " << simPotStats->GetStDev() << endl;
 	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
@@ -576,7 +579,8 @@ void Simulation::Run(){
                    }
            }
            if(maxSim==1) {
-               FinalPrint();
+//               FinalPrint();
+	       logFile << " ****Simulation Finished****" << endl;
            }
            else {
                logFile << "****** Finished Simulation " << simNum << " ******" << endl;
@@ -584,11 +588,11 @@ void Simulation::Run(){
            Log();
            simStats->AddVal(energyStats->GetMean());
            simPotStats->AddVal(potentialStats->GetMean());
-           simComboStats->AddVal(comboStats->GetMean());
+//           simComboStats->AddVal(comboStats->GetMean());
            sys->Reset();
            energyStats->Reset();
            potentialStats->Reset();
-           comboStats->Reset();
+//           comboStats->Reset();
       }
       if(maxSim>1) {
          FinalLog();
@@ -625,7 +629,8 @@ void Simulation::Run(){
                        }
                }
                if(maxSim==1) {
-                   FinalPrint();
+//                   FinalPrint();
+	          logFile << " ****Simulation Finished****" << endl;
                }
                else {
                    logFile << "****** Finished Simulation " << simNum << " ******" << endl;
@@ -636,11 +641,11 @@ void Simulation::Run(){
 //  DES Note:   Adding multiplication by 2 lambda here rather than during simulation
 //              potentialStats has no clue that we're running TI
 //               simPotStats->AddVal(potentialStats->GetMean()*2*sys->GetPhysics()->lambdaTI);
-               simComboStats->AddVal(comboStats->GetMean());
+//               simComboStats->AddVal(comboStats->GetMean());
                sys->Reset();
                energyStats->Reset();
                potentialStats->Reset();
-               comboStats->Reset();
+//               comboStats->Reset();
             }
             logFile << "Run with lambda = " << sys->GetPhysics()->lambdaTI << endl;
             if(maxSim>1) {
@@ -652,7 +657,7 @@ void Simulation::Run(){
             potentialStDevPoints += simPotStats->GetStDev() * 0.5 * gWeights[pLam];
             simStats->Reset();
             simPotStats->Reset();
-            simComboStats->Reset();
+//            simComboStats->Reset();
         }
         TILog(potentialPoints, potentialStDevPoints);
     }

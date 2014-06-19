@@ -108,9 +108,11 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
          }
       }
 */
+   delete rhoFree;
 }
 
 V_Tinker::~V_Tinker() {
+   delete coordKeeper;
 }
 
 double V_Tinker::GetV(vector<Particle> part, Propagator * rho){

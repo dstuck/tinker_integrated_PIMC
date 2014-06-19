@@ -64,7 +64,7 @@ public:
 	int numSteps;
 	Potential * V;
 	Propagator * rho;
-    PhysicsUtil * physics;
+        PhysicsUtil * physics;
 	vector<bool> upToDate;
 	vector<double> sliceV;
 	vector<double> oldSliceV;

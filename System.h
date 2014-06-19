@@ -29,7 +29,7 @@ public:
 	virtual double Debug() = 0;
 	virtual string GetVType() = 0;
 	virtual string GetRhoType() = 0;
-    virtual PhysicsUtil* GetPhysics();
+    virtual PhysicsUtil* GetPhysics() = 0;
 
 };
 

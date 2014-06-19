@@ -416,6 +416,14 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 Simulation::~Simulation() {
 //	posFile.close();
 	logFile.close();
+   delete simStats;
+   delete simPotStats;
+   delete energyStats;
+   delete potentialStats;
+   delete convergenceStats;
+   delete acceptanceStats;
+   delete idum;
+   delete sys;
 }
 
 void Simulation::TakeStep(){

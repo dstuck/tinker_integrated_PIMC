@@ -6,6 +6,7 @@
  */
 
 #include "V_TinkerExecutable.h"
+#include <stdlib.h>
 
 V_TinkerExecutable::V_TinkerExecutable(CoordUtil * coords) {
 //	tinkInFileName = "pimc.xyz";

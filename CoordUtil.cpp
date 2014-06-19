@@ -6,6 +6,7 @@
  */
 
 #include "CoordUtil.h"
+#include <stdlib.h> 
 
 CoordUtil::CoordUtil() {
 }

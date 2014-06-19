@@ -88,6 +88,9 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
 
 TestSystem::~TestSystem() {
 	// TODO Auto-generated destructor stub
+   delete V;
+   delete rho;
+   delete physics;
 }
 
 void TestSystem::Reset() {

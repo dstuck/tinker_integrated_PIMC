@@ -175,3 +175,7 @@ string V_Tinker::GetType() {
 	string name = "Tinker";
 	return name;
 }
+
+CoordUtil* V_Tinker::GetCoordUtil() {
+        return coordKeeper;
+}

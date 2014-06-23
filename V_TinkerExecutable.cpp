@@ -89,6 +89,10 @@ string V_TinkerExecutable::GetType() {
 	return name;
 }
 
+CoordUtil* V_TinkerExecutable::GetCoordUtil() {
+        return coordKeeper;
+}
+
 
 
 //	Utility function stolen from http://www.oopweb.com/CPP/Documents/CPPHOWTO/Volume/C++Programming-HOWTO-7.html

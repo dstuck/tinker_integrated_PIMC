@@ -53,3 +53,8 @@ string V_UCHO::GetType() {
 	string name = "UCHO";
 	return name;
 }
+
+CoordUtil* V_UCHO::GetCoordUtil() {
+        cout << "ERROR: CoordUtil not supported in UCHO" << endl;
+        return NULL;
+}

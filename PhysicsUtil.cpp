@@ -12,9 +12,13 @@ PhysicsUtil::PhysicsUtil() {
 	numInit = -1;
     numFrozModes = 0;
     lambdaTI = 1.0;
+    deltaAbInit = false;
 }
 
 PhysicsUtil::~PhysicsUtil() {
 	// TODO Auto-generated destructor stub
 }
 
+bool PhysicsUtil::isDeltaAI() {
+    return deltaAbInit;
+}

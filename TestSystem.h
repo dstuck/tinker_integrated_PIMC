@@ -26,6 +26,7 @@
 #include <math.h>
 #include <iostream>
 #include <vector>
+#include <fstream>
 using namespace std;
 
 class TestSystem: public System {
@@ -70,6 +71,10 @@ public:
 	vector<double> oldSliceV;
 	vector< vector<Particle> > part;
 	vector< vector<Particle> > oldPart;
+
+//DES Temp
+        int tempNum;     //TODO: Delete this
+        ofstream qchemFile;  //TODO: Delete this
 };
 
 #endif /* CLASSICALSYS_H_ */

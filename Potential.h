@@ -11,6 +11,9 @@
 #include "Particle.h"
 #include "Propagator.h"
 #include <vector>
+
+class CoordUtil;
+
 using namespace std;
 
 class Potential {
@@ -20,6 +23,7 @@ public:
 
 	virtual double GetV(vector<Particle>, Propagator *) = 0;
 	virtual string GetType() = 0;
+        virtual CoordUtil* GetCoordUtil() = 0;
 };
 
 #endif /* POTENTIAL_H_ */

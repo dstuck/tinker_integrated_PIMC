@@ -26,6 +26,7 @@ public:
 	virtual ~V_TinkerExecutable();
 	double GetV(vector<Particle>, Propagator *);
 	string GetType();
+        CoordUtil* GetCoordUtil();
 	void Tokenize(const string&, vector<string>&, const string& = " ");
 
 	double vEquib;

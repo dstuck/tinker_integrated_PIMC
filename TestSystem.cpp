@@ -8,6 +8,7 @@
 #include "TestSystem.h"
 
 TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil * phys) : System(), physics(phys) {
+        tempNum = 0;
 	N = coords->numModes;
 	P = pSlice;
 	eps = beta/((double)P);
@@ -47,10 +48,10 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
 	}
 	else if(!physics->vType.compare("V_Morse")) {
 		if(physics->morseAlpha != 0.0 && physics->morseDE != 0.0) {
-			V = new V_Morse(physics->morseDE, physics->morseAlpha, N);
+			V = new V_Morse(coords, physics->morseDE, physics->morseAlpha, N);
 		}
 		else {
-			V = new V_Morse(0.176, 1.4886, N);		//H2
+			V = new V_Morse(coords, 0.176, 1.4886, N);		//H2
 		}
 	}
 	else if(!physics->vType.compare("V_UCHO")) {
@@ -183,8 +184,36 @@ double TestSystem::GetOldWeight() {
 }
 
 double TestSystem::EstimatorV() {
-	CalcPotential();			//Might not need this
-	return potE/((double)P);
+        if(!physics->isDeltaAI()) {
+	    CalcPotential();			//Might not need this
+	    return potE/((double)P);
+        }
+        else {
+// DES: running ab initio thermodynamic integration correction to molecular mechanics
+            int pickedSlice = 0;        //TODO: Make this random
+            double pickedV = V->GetV(part[pickedSlice], rho);
+// DES Temp: Just print a .in file with geometry
+            string qchemName = std::to_string(tempNum) + "_pimc.in";
+            qchemFile.open(qchemName.c_str());
+            int N = V->GetCoordUtil()->numPart;
+//	Get cartesians from normal modes
+            vector< vector<double> > cartPos = V->GetCoordUtil()->normalModeToCart(part[pickedSlice]);
+//	Write qchem inputfile
+            qchemFile << "$comments\nDES: deltaPIMC job\n$end\n" << endl;
+            qchemFile << "$rem" << endl;
+            for(int i=0; i<N; i++) {
+                    qchemFile << V->GetCoordUtil()->atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
+                    qchemFile << endl;
+            }
+            qchemFile << "$end\n" << endl;
+// B3LYP
+            qchemFile << "$rem\n         JOBTYPE           sp\n         EXCHANGE          B3LYP\n         BASIS             cc-pVTZ\n         SCF_GUESS         SAD\n         SCF_ALGORITHM     DIIS\n         MAX_SCF_CYCLES    200\n         SYM_IGNORE        TRUE\n         SYMMETRY          FALSE\n         UNRESTRICTED      TRUE\n         SCF_CONVERGENCE   8\n         THRESH         9\n         MEM_STATIC       1000 \n         MEM_TOTAL       4000\n$end" << endl;
+//            qchemFile << "$rem\n         JOBTYPE           sp\n         EXCHANGE          HF\n         CORRELATION          MP2\n         BASIS             cc-pVTZ\n   MP2_RESTART_NO_SCF   TRUE\n      purecart       2222\n         SCF_GUESS         READ\n         SCF_ALGORITHM     DIIS\n         THRESH_DIIS_SWITCH  4\n         MAX_SCF_CYCLES    200\n         SYM_IGNORE        TRUE\n         SYMMETRY          FALSE\n         UNRESTRICTED      TRUE\n         SCF_CONVERGENCE   8\n         DO_O2          0\n         THRESH         14\n         MEM_STATIC       1000 \n         MEM_TOTAL       4000\n$end" << endl;
+            
+            qchemFile.close();
+            tempNum++;
+            return pickedV;
+        }
 //	return exp(double(-eps)*(potE));
 }
 

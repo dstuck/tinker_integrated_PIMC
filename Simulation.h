@@ -50,7 +50,7 @@ class Simulation {
 		int convFreq;
 		int storeFreq;
 		int levyNum;
-        int numTI;
+                int numTI;
 		int * idum;
 //		int * idum2;
 		double beta;			//TODO: Remove
@@ -70,6 +70,10 @@ class Simulation {
 		Stats * acceptanceStats;
 //		Stats * xStats;		//TODO: Remove
 		System * sys;
+
+//DES Temp:
+                ofstream vFile;      //TODO: Remove
+                int tempNum;      //TODO: Remove
 };
 
 #endif /* SIMULATION_H_ */

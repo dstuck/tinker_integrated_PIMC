@@ -7,17 +7,14 @@
 
 #include "V_Morse.h"
 
-V_Morse::V_Morse() {
-}
-
-V_Morse::V_Morse(double deVar, double aVar, int N) {
+V_Morse::V_Morse(CoordUtil* coords, double deVar, double aVar, int N) : coordKeeper(coords) {
 	for(int j=0; j<N; j++) {
 		de.push_back(deVar);
 		a.push_back(aVar);
 	}
 }
 
-V_Morse::V_Morse(vector<double> deVar, vector<double> aVar) {
+V_Morse::V_Morse(CoordUtil* coords, vector<double> deVar, vector<double> aVar) : coordKeeper(coords) {
 	if(deVar.size()!=aVar.size()){
 		cout << "!!!Error: De and a dimensions different in V_Morse initialization!!!" << endl;
 	}
@@ -50,4 +47,8 @@ double V_Morse::GetV(vector<Particle> part, Propagator * rho) {
 string V_Morse::GetType() {
 	string name = "Morse";
 	return name;
+}
+
+CoordUtil* V_Morse::GetCoordUtil() {
+        return coordKeeper;
 }

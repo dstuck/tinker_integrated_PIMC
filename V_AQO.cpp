@@ -43,6 +43,11 @@ string V_AQO::GetType() {
 	return name;
 }
 
+CoordUtil* V_AQO::GetCoordUtil() {
+        cout << "ERROR: CoordUtil not supported in UCHO" << endl;
+        return NULL;
+}
+
 V_AQO::~V_AQO() {
 	// TODO Auto-generated destructor stub
 }

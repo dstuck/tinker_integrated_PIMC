@@ -18,6 +18,7 @@ class PhysicsUtil {
 public:
 	PhysicsUtil();
 	virtual ~PhysicsUtil();
+        bool isDeltaAI();
 
 //	TODO: Make this a struct
 //	Propagator variables
@@ -29,6 +30,7 @@ public:
 	int numInit;
     int numFrozModes;
     double lambdaTI;
+    bool deltaAbInit;
 };
 
 #endif /* PHYSICSUTIL_H_ */

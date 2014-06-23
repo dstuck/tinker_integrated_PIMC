@@ -23,12 +23,15 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	beta = 10500;	//30 K
 //	beta = 5250;	//60 K
  */
+// DES Temp:
+        tempNum = 0;
         maxSim = 1;
         bool readOmega = false;
 	int nPart = 0;
 	int pSlice = 0;
 	int nMode;
 	int coorDim;
+        bool deltaAI;
 //	I had been running this previously with the wrong intended mass (3500 instead of 35000)
 //	double m = 3500.0;				// 35000 me corresponds to ~20 nuclei
 //	The line below is false, w = 0.00868 corresponds to 11976 wavenumber
@@ -56,6 +59,9 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 //	Open the infile
 	ifstream input;
 	input.open(inFileName.c_str());
+// DES Temp:
+        string tempstr = "potential.txt";
+        vFile.open(tempstr.c_str());
 //	Read in and parse the file
 	string lineRead;
 	while(std::getline(input, lineRead)) {		// Reads next line until it reaches end of file
@@ -157,6 +163,11 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 					else if(lineTokens[0].find("numTI") != std::string::npos) {
                                             if(atof(lineTokens[1].c_str())>0) {
 					        numTI=atof(lineTokens[1].c_str());
+                                            }
+					}
+					else if(lineTokens[0].find("deltaAI") != std::string::npos) {
+                                            if(atof(lineTokens[1].c_str())>0) {
+                                                physicsParams->deltaAbInit = true;
                                             }
 					}
 					else if(lineTokens[0].find("readOmega") != std::string::npos) {
@@ -416,6 +427,8 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 Simulation::~Simulation() {
 //	posFile.close();
 	logFile.close();
+// DES Temp:
+	vFile.close();
    delete simStats;
    delete simPotStats;
    delete energyStats;
@@ -471,7 +484,16 @@ void Simulation::Sample(){
 	}
 	if((stepNum > sampleStart)&&(stepNum%sampleFreq==0)) {
 		energyStats->AddVal(sys->EstimatorE());
-		potentialStats->AddVal(sys->EstimatorV());
+//DES Temp:
+                if(!sys->GetPhysics()->isDeltaAI()) {
+		    potentialStats->AddVal(sys->EstimatorV());
+                }
+                else {
+                    double tempV = sys->EstimatorV();
+                    potentialStats->AddVal(tempV);
+                    vFile << tempNum << "\t" << tempV << endl;
+                    tempNum++;
+                }
 //		comboStats->AddVal(sys->EstimatorV()*sys->EstimatorE());
 		vector< vector<Particle>  > part = sys->GetParticle();
 /* xstats

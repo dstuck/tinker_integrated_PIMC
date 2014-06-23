@@ -27,6 +27,7 @@ public:
 	virtual ~V_Tinker();
 	double GetV(vector<Particle>, Propagator *);
 	string GetType();
+        CoordUtil* GetCoordUtil();
 	void Tokenize(const string&, vector<string>&, const string& = " ");
 
 	double vEquib;        //in kcal/mole

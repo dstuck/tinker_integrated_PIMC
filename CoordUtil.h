@@ -13,6 +13,8 @@
 #include <math.h>
 #include <iostream>
 #include <vector>
+#include <map>
+#include <armadillo>
 using namespace std;
 
 class CoordUtil {
@@ -22,6 +24,9 @@ public:
 	virtual ~CoordUtil();
 
 	vector< vector<double> > normalModeToCart(vector<Particle>);
+	vector<double> cartToNormalMode(vector< vector<double> >);
+        void initMass();
+        CoordUtil* Clone();
 
         bool readOmega;
 	int numModes;
@@ -29,6 +34,7 @@ public:
 	int dim;
 	std::string tinkerName;
 	std::string prmName;
+        map<string,double> atomToMass;
 	vector<string> atomType;
 	vector<int> paramType;
 //        vector<double> mass;
@@ -37,6 +43,7 @@ public:
 	vector< vector<int> > connectivity;
 	vector< vector<double> > initCart;
 	vector< vector< vector<double> > > normModes;
+      arma::mat armaInvModes;
 };
 
 #endif /* COORDUTIL_H_ */

@@ -24,7 +24,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 //	beta = 5250;	//60 K
  */
 // DES Temp:
-        tempNum = 0;
+//        tempNum = 0;
         maxSim = 1;
         bool readOmega = false;
 	int nPart = 0;
@@ -60,8 +60,8 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	ifstream input;
 	input.open(inFileName.c_str());
 // DES Temp:
-        string tempstr = "potential.txt";
-        vFile.open(tempstr.c_str());
+//        string tempstr = "potential.txt";
+//        vFile.open(tempstr.c_str());
 //	Read in and parse the file
 	string lineRead;
 	while(std::getline(input, lineRead)) {		// Reads next line until it reaches end of file
@@ -343,6 +343,10 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	if(physicsParams->numInit<0) {
 		physicsParams->numInit = pSlice-1;
 	}
+	if(physicsParams->isDeltaAI() && numTI<1) {
+		numTI=1;
+               cout << "DES: Setting numTI to 1 for deltaAI" << endl;
+	}
 	string outName = logFileName.substr(0, logFileName.find_first_of("."));
 	epsTemp = beta/((double)pSlice);
 
@@ -428,7 +432,7 @@ Simulation::~Simulation() {
 //	posFile.close();
 	logFile.close();
 // DES Temp:
-	vFile.close();
+//	vFile.close();
    delete simStats;
    delete simPotStats;
    delete energyStats;
@@ -491,8 +495,8 @@ void Simulation::Sample(){
                 else {
                     double tempV = sys->EstimatorV();
                     potentialStats->AddVal(tempV);
-                    vFile << tempNum << "\t" << tempV << endl;
-                    tempNum++;
+//                    vFile << tempNum << "\t" << tempV << endl;
+//                    tempNum++;
                 }
 //		comboStats->AddVal(sys->EstimatorV()*sys->EstimatorE());
 		vector< vector<Particle>  > part = sys->GetParticle();

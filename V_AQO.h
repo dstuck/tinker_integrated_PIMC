@@ -24,6 +24,7 @@ public:
 	V_AQO(vector<double>, vector<double>);
 	virtual ~V_AQO();
 	double GetV(vector<Particle>, Propagator *);
+	double GetV(vector<Particle>);
 	string GetType();
         CoordUtil* GetCoordUtil();
 

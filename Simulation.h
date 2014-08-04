@@ -72,8 +72,8 @@ class Simulation {
 		System * sys;
 
 //DES Temp:
-                ofstream vFile;      //TODO: Remove
-                int tempNum;      //TODO: Remove
+//                ofstream vFile;      //TODO: Remove
+//                int tempNum;      //TODO: Remove
 };
 
 #endif /* SIMULATION_H_ */

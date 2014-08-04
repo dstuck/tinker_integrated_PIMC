@@ -22,6 +22,7 @@ public:
 	virtual ~Potential();
 
 	virtual double GetV(vector<Particle>, Propagator *) = 0;
+	virtual double GetV(vector<Particle>) = 0;
 	virtual string GetType() = 0;
         virtual CoordUtil* GetCoordUtil() = 0;
 };

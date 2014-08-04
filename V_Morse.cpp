@@ -27,6 +27,16 @@ V_Morse::~V_Morse() {
 }
 
 double V_Morse::GetV(vector<Particle> part, Propagator * rho) {
+	double V = 0;
+        V += GetV(part);
+//	cout << "preV: " << V << endl;
+	V += rho->ModifyPotential(part);
+//	cout << "V: " << V << endl;
+
+	return V;
+}
+
+double V_Morse::GetV(vector<Particle> part) {
 //	Really, should only have dimension 1
 	double V = 0;
 	int dim = part[0].pos.size();
@@ -37,9 +47,6 @@ double V_Morse::GetV(vector<Particle> part, Propagator * rho) {
 			V += de[j]*(1.0 - expTemp)*(1.0-expTemp);
 		}
 	}
-//	cout << "preV: " << V << endl;
-	V += rho->ModifyPotential(part);
-//	cout << "V: " << V << endl;
 
 	return V;
 }

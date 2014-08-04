@@ -14,7 +14,6 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
 //    Initialize forcefield
 	vector<Particle> parts;
 	Particle p0(0.0, 1);
-	Propagator * rhoFree = new Rho_Free;
 	for(int i=0; i<coordKeeper->numModes; i++) {
 		parts.push_back(p0);
 	}
@@ -73,13 +72,23 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
          coordKeeper->normModes.resize(N);
          for(int i=0; i<N; i++) {
             coordKeeper->normModes[i].resize(coordKeeper->numPart);
+            double vnorm = 0.0;
+            double tempVal = 0.0;
             for(int j=0; j<coordKeeper->numPart; j++) {
                coordKeeper->normModes[i][j].resize(3,0.0);
                for(int k=0; k<3; k++) {
+// TODO: remove vnorm
+//                  tempVal = tinkModes[k+3*j+3*coordKeeper->numPart*i];
                   coordKeeper->normModes[i][j][k] = tinkModes[k+3*j+3*coordKeeper->numPart*i];
+//                  coordKeeper->normModes[i][j][k] = tempVal;
                   //cout << "DES Temp:" << tinkModes[k+3*j+3*coordKeeper->numPart*i] << endl;
                }
             }
+//            for(int j=0; j<coordKeeper->numPart; j++) {
+//               for(int k=0; k<3; k++) {
+//                  coordKeeper->normModes[i][j][k] /= vnorm;
+//               }
+//            }
          }
       }
       else {
@@ -95,7 +104,7 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
 //    Get vEquib
 	double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
 	vEquib = 0.0;
-	vEquib = GetV(parts, rhoFree)*hartreeToKcal;
+	vEquib = GetV(parts)*hartreeToKcal;
 /*
       for(int i=0; i<N; i++) {
          cout << coordKeeper->reducedMass[i]/1822.8886 << endl;
@@ -108,7 +117,6 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
          }
       }
 */
-   delete rhoFree;
 }
 
 V_Tinker::~V_Tinker() {
@@ -117,10 +125,53 @@ V_Tinker::~V_Tinker() {
 
 double V_Tinker::GetV(vector<Particle> part, Propagator * rho){
 
+	double V = 0.0;
+        V += GetV(part);
+//	cout << "Unmodified V =\t" << V << endl;
+	V += rho->ModifyPotential(part);
+//	cout << "Modified V =\t" << V << endl;
+	return V;
+}
+
+double V_Tinker::GetV(vector<Particle> part){
+
 	double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
 	double V = 0.0;
 //	Get cartesians from normal modes
 	vector< vector<double> > cartPos = coordKeeper->normalModeToCart(part);
+/*
+//DES Temp Temp:
+   if(tempcounter==0||tempcounter==2) {
+      tempcounter++;
+      int N = coordKeeper->numPart;
+      vector<double> normMode = coordKeeper->cartToNormalMode(cartPos);
+      cout << "Normal modes" << endl;
+      for(int i=0; i<part.size(); i++) {
+         cout << part[i].pos[0] << "\t" << normMode[i] << endl;
+      }
+//      cout << "Energy 1 = " << GetV(part) << endl;
+      cout << "Cartesians1" << endl;
+      for(int i=0; i<N; i++) {
+      cout << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2] << endl;
+      }
+
+      for(int i=0; i<part.size(); i++) {
+         part[i].pos[0] = normMode[i];
+      }
+//      cout << "Energy 2 = " << GetV(part) << endl;
+      cartPos = coordKeeper->normalModeToCart(part);
+      cout << "Cartesians2" << endl;
+      for(int i=0; i<N; i++) {
+         cout << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2] << endl;
+      }
+      if(tempcounter==1) {
+         tempcounter++;
+      }
+      else {
+         exit(-1);
+      }
+   }
+*/
 
 /*
 //      Write tinker inputfile
@@ -165,10 +216,7 @@ double V_Tinker::GetV(vector<Particle> part, Propagator * rho){
 //	cout << "Tinker V =\t" << V << endl;
       V -= vEquib;
       V /= hartreeToKcal;
-//	cout << "Unmodified V =\t" << V << endl;
-	V += rho->ModifyPotential(part);
-//	cout << "Modified V =\t" << V << endl;
-	return V;
+      return V;
 }
 
 string V_Tinker::GetType() {

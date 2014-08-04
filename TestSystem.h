@@ -16,6 +16,7 @@
 #include "V_Morse.h"
 #include "V_TinkerExecutable.h"
 #include "V_Tinker.h"
+#include "V_QChem.h"
 #include "Propagator.h"
 #include "Rho_Free.h"
 #include "Rho_HO.h"
@@ -26,6 +27,7 @@
 #include <math.h>
 #include <iostream>
 #include <vector>
+#include <sstream>
 #include <fstream>
 using namespace std;
 
@@ -64,6 +66,7 @@ public:
 	double avgV;
 	int numSteps;
 	Potential * V;
+	Potential * V2;
 	Propagator * rho;
         PhysicsUtil * physics;
 	vector<bool> upToDate;
@@ -73,8 +76,9 @@ public:
 	vector< vector<Particle> > oldPart;
 
 //DES Temp
-        int tempNum;     //TODO: Delete this
-        ofstream qchemFile;  //TODO: Delete this
+      ofstream vFile;      //TODO: Remove
+      int tempNum;      //TODO: Remove
+//        ofstream qchemFile;  //TODO: Delete this
 };
 
 #endif /* CLASSICALSYS_H_ */

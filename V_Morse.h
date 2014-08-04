@@ -24,6 +24,7 @@ public:
 	V_Morse(CoordUtil*, vector<double>, vector<double>);
 	virtual ~V_Morse();
 	double GetV(vector<Particle>, Propagator *);
+	double GetV(vector<Particle>);
 	string GetType();
         CoordUtil* GetCoordUtil();
 

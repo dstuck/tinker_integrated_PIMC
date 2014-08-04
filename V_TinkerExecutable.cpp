@@ -32,6 +32,15 @@ V_TinkerExecutable::~V_TinkerExecutable() {
 }
 
 double V_TinkerExecutable::GetV(vector<Particle> part, Propagator * rho){
+	double V = 0;
+        V += GetV(part);
+//	cout << V << endl;
+	V += rho->ModifyPotential(part);
+//	cout << "Modified V =\t" << V << endl;
+	return V;
+}
+
+double V_TinkerExecutable::GetV(vector<Particle> part){
 
 	double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
 
@@ -70,16 +79,9 @@ double V_TinkerExecutable::GetV(vector<Particle> part, Propagator * rho){
 		}
 	}
 	V -= vEquib;
-//	cout << "Unmodified V =\t" << V << endl;
-//	cout << V << endl;
-	V += rho->ModifyPotential(part);
-//	cout << "Modified V =\t" << V << endl;
 
 	inFile.close();
 	outFile.close();
-
-//	cout << "exiting" << endl;
-//	exit(-1);
 
 	return V;
 }

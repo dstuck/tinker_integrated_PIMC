@@ -25,7 +25,7 @@ using namespace std;
 
 class V_QChem: public Potential {
 public:
-   V_QChem(CoordUtil*, CoordUtil*, double, double);
+   V_QChem(CoordUtil*, CoordUtil*, double, double, int, int);
    virtual ~V_QChem();
    double GetV(vector<Particle>, Propagator *);
    double GetV(vector<Particle>);
@@ -39,6 +39,8 @@ public:
    vector<double> wQChem;
    ofstream inFile;
    V_UCHO harmV;
+   int charge;
+   int spin;
 
 //DES Temp
    int tempNum;     //TODO: Delete this

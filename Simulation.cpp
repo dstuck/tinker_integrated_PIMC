@@ -161,9 +161,13 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 						physicsParams->numFrozModes = atof(lineTokens[1].c_str());
 					}
 					else if(lineTokens[0].find("numTI") != std::string::npos) {
-                                            if(atof(lineTokens[1].c_str())>0) {
-					        numTI=atof(lineTokens[1].c_str());
-                                            }
+					        numTI=atoi(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("charge") != std::string::npos) {
+						physicsParams->charge = atoi(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("multiplicity") != std::string::npos || lineTokens[0].find("spin") != std::string::npos) {
+						physicsParams->multiplicity = atoi(lineTokens[1].c_str());
 					}
 					else if(lineTokens[0].find("deltaAI") != std::string::npos) {
                                             if(atof(lineTokens[1].c_str())>0) {

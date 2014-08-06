@@ -8,7 +8,7 @@
 #include "V_QChem.h"
 
 
-V_QChem::V_QChem(CoordUtil* coords, CoordUtil* tinkCoords,  double eps, double beta) : coordKeeper(coords), tinkerCoords(tinkCoords) {
+V_QChem::V_QChem(CoordUtil* coords, CoordUtil* tinkCoords,  double eps, double beta, int _charge, int _spin) : coordKeeper(coords), tinkerCoords(tinkCoords), charge(_charge), spin(_spin) {
 // Set rems
 
 // Set equib pos
@@ -115,7 +115,8 @@ double V_QChem::GetV(vector<Particle> part){
 */
 //	Write qchem inputfile
    qchemFile << "$comments\nDES: deltaPIMC job\n$end\n" << endl;
-   qchemFile << "$molecule\n 0 1" << endl;
+//   qchemFile << "$molecule\n 0 1" << endl;
+   qchemFile << "$molecule\n " << charge << " " << spin << endl;
    for(int i=0; i<N; i++) {
       qchemFile << coordKeeper->atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
       qchemFile << endl;

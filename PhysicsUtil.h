@@ -28,9 +28,11 @@ public:
 	double morseDE;
 	double morseAlpha;
 	int numInit;
-    int numFrozModes;
-    double lambdaTI;
-    bool deltaAbInit;
+   int numFrozModes;
+   double lambdaTI;
+   bool deltaAbInit;
+   int charge;
+   int multiplicity;
 };
 
 #endif /* PHYSICSUTIL_H_ */

@@ -73,7 +73,7 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
    }
 
    if(phys->isDeltaAI()) {
-      V2 = new V_QChem(qchemCoords,coords,eps,beta);
+      V2 = new V_QChem(qchemCoords,coords,eps,beta,physics->charge,physics->multiplicity);
    }
 
    if(!physics->rhoType.compare("Rho_HO")) {
@@ -221,6 +221,8 @@ double TestSystem::EstimatorV() {
       V2->GetV(part[pickedSlice]);
 
       vFile << tempNum << "\t" << harmV << "\t" << pickedV << "\t" << endl;
+// DES Temp!!!!
+      //vFile << tempNum << "\t" << part[pickedSlice][0].pos[0] << "\t" << harmV << "\t" << pickedV << "\t" << endl;
       tempNum++;
       
       /*

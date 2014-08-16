@@ -65,8 +65,19 @@ double V_QChem::GetV(vector<Particle> part){
 
    double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
    double V = 0.0;
+   double wScale;
+   double mScale;
+// Scale normal modes so that sampling is in same harmonic potential as MM
+   for(int i=0; i<coordKeeper->numModes; i++) {
+      mScale = sqrt(tinkerCoords->reducedMass[i]) / sqrt(coordKeeper->reducedMass[i]);
+      wScale = tinkerCoords->omega[i] / coordKeeper->omega[i];
+      part[i].pos[0] *= wScale * mScale;
+   }
+
 //	Get cartesians from normal modes
-   vector< vector<double> > cartPos = tinkerCoords->normalModeToCart(part);
+// DES Temp:
+//   vector< vector<double> > cartPos = tinkerCoords->normalModeToCart(part);
+   vector< vector<double> > cartPos = coordKeeper->normalModeToCart(part);
 
 // DES: running ab initio thermodynamic integration correction to molecular mechanics
 //   int pickedSlice = 0;        //TODO: Make this random

@@ -27,6 +27,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 //        tempNum = 0;
         maxSim = 1;
         bool readOmega = false;
+        bool readGeom = false;
 	int nPart = 0;
 	int pSlice = 0;
 	int nMode;
@@ -172,6 +173,11 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 					else if(lineTokens[0].find("deltaAI") != std::string::npos) {
                                             if(atof(lineTokens[1].c_str())>0) {
                                                 physicsParams->deltaAbInit = true;
+                                            }
+					}
+					else if(lineTokens[0].find("readGeom") != std::string::npos) {
+                                            if(atof(lineTokens[1].c_str())>0) {
+                                                readGeom = true;
                                             }
 					}
 					else if(lineTokens[0].find("readOmega") != std::string::npos) {
@@ -374,7 +380,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	}
 */
 
-	CoordUtil * coords = new CoordUtil(nMode, nPart, modes, omega, mass, initPos, atomType, paramType, connectivity, outName, prmFile, readOmega);
+	CoordUtil * coords = new CoordUtil(nMode, nPart, modes, omega, mass, initPos, atomType, paramType, connectivity, outName, prmFile, readGeom, readOmega);
 	sys = new TestSystem(pSlice, beta, coords, physicsParams);
 	simStats = new Stats();
 	simPotStats = new Stats();

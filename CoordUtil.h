@@ -14,13 +14,13 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include <armadillo>
+#include "armadillo"
 using namespace std;
 
 class CoordUtil {
 public:
 	CoordUtil();
-	CoordUtil(int, int, vector< vector< vector<double> > >, vector<double>, vector<double>, vector< vector<double> >, vector<string>, vector<int>, vector< vector<int> >, string, string,bool);
+	CoordUtil(int, int, vector< vector< vector<double> > >, vector<double>, vector<double>, vector< vector<double> >, vector<string>, vector<int>, vector< vector<int> >, string, string,bool,bool);
 	virtual ~CoordUtil();
 
 	vector< vector<double> > normalModeToCart(vector<Particle>);
@@ -29,6 +29,7 @@ public:
         CoordUtil* Clone();
 
         bool readOmega;
+        bool readGeom;
 	int numModes;
 	int numPart;
 	int dim;

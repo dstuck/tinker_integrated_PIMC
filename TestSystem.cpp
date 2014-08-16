@@ -47,6 +47,7 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
 //	rho = new Rho_TruncHO(w);
    CoordUtil * qchemCoords;
    if(phys->isDeltaAI()) {
+// We clone coords here since unless readOmega and readGeom are set, they will be overwritten by V_Tinker constructor
       qchemCoords = coords->Clone();
    }
 

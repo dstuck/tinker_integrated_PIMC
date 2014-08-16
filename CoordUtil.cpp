@@ -11,7 +11,7 @@
 CoordUtil::CoordUtil() {
 }
 
-CoordUtil::CoordUtil(int nMode, int nPart, vector <vector < vector <double> > > modes, vector<double> freqs, vector<double> m, vector <vector <double> > initPos, vector<string> atomicSymbols, vector<int> params, vector< vector<int> > conn, string tinkName, string prmFile, bool readW) : numModes(nMode), numPart(nPart), normModes(modes), omega(freqs), reducedMass(m), initCart(initPos), atomType(atomicSymbols), paramType(params), connectivity(conn), tinkerName(tinkName), prmName(prmFile), readOmega(readW)  {
+CoordUtil::CoordUtil(int nMode, int nPart, vector <vector < vector <double> > > modes, vector<double> freqs, vector<double> m, vector <vector <double> > initPos, vector<string> atomicSymbols, vector<int> params, vector< vector<int> > conn, string tinkName, string prmFile, bool readG, bool readW) : numModes(nMode), numPart(nPart), normModes(modes), omega(freqs), reducedMass(m), initCart(initPos), atomType(atomicSymbols), paramType(params), connectivity(conn), tinkerName(tinkName), prmName(prmFile), readGeom(readG), readOmega(readW)  {
 //	normModes = modes;				//normModes[i][j][k] is kth dimension of jth atom for the ith normal mode
 //        omega = freqs;
 //	initCart = initPos;				//initPos[i][j] is jth dimension of ith atom
@@ -186,7 +186,7 @@ vector<double> CoordUtil::cartToNormalMode(vector< vector<double> > cart) {
 }
 
 CoordUtil* CoordUtil::Clone() {
-   CoordUtil* newCoords = new CoordUtil(numModes,numPart,normModes,omega,reducedMass,initCart,atomType,paramType,connectivity,tinkerName,prmName,readOmega);
+   CoordUtil* newCoords = new CoordUtil(numModes,numPart,normModes,omega,reducedMass,initCart,atomType,paramType,connectivity,tinkerName,prmName,readGeom,readOmega);
    return newCoords;
 }
 

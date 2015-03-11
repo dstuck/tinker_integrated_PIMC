@@ -17,7 +17,7 @@ public:
 	virtual ~System();
 //	virtual void CalcEnergy() = 0;		//Used internally
 //	virtual void CalcPotential() = 0;	//Used internally
-	virtual void Move(vector<double>, int) = 0;
+	virtual void Move(vector<double>, int, int levyPart = 1) = 0;
 	virtual void Forget() = 0;
 	virtual void Undo() = 0;
     virtual void Reset() = 0;

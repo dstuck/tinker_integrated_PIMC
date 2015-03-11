@@ -55,6 +55,7 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
             coordKeeper->initCart[j][k] = xyzCoord[k+j*3];
          }
       }
+      coordKeeper->guessCarts = coordKeeper->initCart;
       cout << "DES: Coords after opt" << endl;
       for(int j=0; j<nPart; j++) {
          for(int k=0; k<3; k++) {
@@ -118,18 +119,6 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
    double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
    vEquib = 0.0;
    vEquib = GetV(parts)*hartreeToKcal;
-   /*
-      for(int i=0; i<N; i++) {
-      cout << coordKeeper->reducedMass[i]/1822.8886 << endl;
-      cout << coordKeeper->omega[i]/0.00000455633 << endl;
-      for(int j=0; j<coordKeeper->numPart; j++) {
-      for(int k=0; k<3; k++) {
-      cout << coordKeeper->normModes[i][j][k] << "\t";
-      }
-      cout << endl;
-      }
-      }
-    */
 }
 
 V_Tinker::~V_Tinker() {

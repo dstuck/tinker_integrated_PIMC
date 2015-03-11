@@ -7,7 +7,7 @@
 
 #include "Rho_HO.h"
 
-Rho_HO::Rho_HO(vector<double> w, int nFrozModes) : omega(w), numFrozModes(nFrozModes) {
+Rho_HO::Rho_HO(vector<double> w, int nFrozModes, int hFrozModes) : omega(w), lowFrozModes(nFrozModes), highFrozModes(hFrozModes) {
 }
 
 Rho_HO::Rho_HO(double w, int N) {
@@ -62,12 +62,17 @@ double Rho_HO::Estimate(vector<Particle> slice1, vector<Particle> slice2, double
 	}
 
 	double est = 0;
-	for(int j=0; j< numFrozModes; j++) {
+	for(int j=0; j< lowFrozModes; j++) {
 		for(int k=0; k<(int)slice1[j].pos.size(); k++) {
 			est += omega[j]/2.0/tanh(eps*(double)P*omega[j]);
 		}
 	}
-	for(int j=numFrozModes; j<(int)slice1.size(); j++) {
+	for(int j=(int)slice1.size()-highFrozModes; j<(int)slice1.size(); j++) {
+		for(int k=0; k<(int)slice1[j].pos.size(); k++) {
+			est += omega[j]/2.0/tanh(eps*(double)P*omega[j]);
+		}
+	}
+	for(int j=lowFrozModes; j<(int)slice1.size()-highFrozModes; j++) {
 		for(int k=0; k<(int)slice1[j].pos.size(); k++) {
 			est += omega[j]/2.0/tanh(eps*omega[j]);
 			est += -slice1[j].mass*omega[j]*omega[j]/2.0/tanh(eps*omega[j])/sinh(eps*omega[j])*(slice1[j].pos[k]-slice2[j].pos[k])*(slice1[j].pos[k]-slice2[j].pos[k]);

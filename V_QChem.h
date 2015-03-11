@@ -21,6 +21,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+//#include <algorithm>
 using namespace std;
 
 class V_QChem: public Potential {
@@ -31,8 +32,10 @@ public:
    double GetV(vector<Particle>);
    string GetType();
    CoordUtil* GetCoordUtil();
+   double GetVHO(vector<Particle>);
    void Tokenize(const string&, vector<string>&, const string& = " ");
 
+   bool doubleTI;
    double vEquib;        //in kcal/mole
    CoordUtil* coordKeeper;
    CoordUtil* tinkerCoords;

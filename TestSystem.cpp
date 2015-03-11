@@ -22,6 +22,7 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
    vector< vector<Particle> > part_init(P,vector<Particle>(N));
    part = part_init;
    oldPart = part_init;
+
    upToDate.resize(P, true);
    sliceV.resize(P, 0.0);
    oldSliceV.resize(P, 0.0);
@@ -72,13 +73,18 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
       cout << "Error in selecing V" << endl;
       exit(-1);
    }
+   coords->initInternals();
 
    if(phys->isDeltaAI()) {
       V2 = new V_QChem(qchemCoords,coords,eps,beta,physics->charge,physics->multiplicity);
+      qchemCoords->initInternals();
+      if(coords->scaleGeom) {
+         qchemCoords->MakeScalingVec(coords);
+      }
    }
 
    if(!physics->rhoType.compare("Rho_HO")) {
-      rho = new Rho_HO(coords->omega,physics->numFrozModes);
+      rho = new Rho_HO(coords->omega,physics->lowFrozModes,physics->highFrozModes);
    }
    else if(!physics->rhoType.compare("Rho_Free")) {
       rho = new Rho_Free();
@@ -98,6 +104,14 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
          oldPart[i][j].mass = coords->reducedMass[j];
       }
    }
+   vector< vector<double> > cart0;
+   cart0 = V->GetCoordUtil()->initCart;
+   for(int i=0; i<P; i++) {
+      oldCarts.push_back(cart0);
+      //newCarts.push_back(cart0);
+   }
+   newCarts = oldCarts;
+
 
 //    Initialize bead polymers with random walks
    Reset();
@@ -133,6 +147,125 @@ void TestSystem::Reset() {
          }
       }
    }
+   for(int i=0; i<P; i++) {
+      oldCarts[i] = V->GetCoordUtil()->initCart;
+      newCarts[i] = oldCarts[i];
+   }
+
+//// DES Test( PES Scan
+//   //double scanBegin = -0.2;
+//   //double scanEnd = 0.2;
+//   double scanBegin = -0.2;   //Bohr, so twice that in Angrstrom
+//   double scanEnd = 0.2;
+//   int scanSteps = 400;
+//   double curX = 0.0;
+//   int pickedMode = 0;
+//   //int pickedMode2 = 3;
+//// Print out frequencies
+//   cout << "   \tw_Tinker\t\tw_QChem" << endl;
+//   for(int i=0;i<N; i++) {
+//      cout << i << "\t" << V->GetCoordUtil()->omega[i] << "\t" << V2->GetCoordUtil()->omega[i] << endl;
+//   }
+//// Print out masses
+//   cout << "   \tm_Tinker\tm_QChem" << endl;
+//   for(int i=0;i<N; i++) {
+//      cout << i << "\t" << V->GetCoordUtil()->reducedMass[i] << "\t" << V2->GetCoordUtil()->reducedMass[i] << endl;
+//   }
+//   //V2->GetCoordUtil()->MakeScalingVec(V->GetCoordUtil());
+//
+//   cout << "x\tV_full\tV_HO" << endl;
+/////*
+//   for(int n=0; n<scanSteps; n++) {
+//      curX = scanBegin + (scanEnd-scanBegin)/(double)(scanSteps-1)*(double)(n);
+//      part[0][pickedMode].pos[0]=curX;
+////      part[0][pickedMode2].pos[0]=curX/2;
+//      cout << curX << "\t" << V->GetV(part[0]) << "\t" << -rho->ModifyPotential(part[0]) << endl;
+//      V2->GetV(part[0]);
+//   }
+////*/
+//   exit(-1);
+//// DES)
+
+// DES ( independent mode deltaAI
+   if(physics->isDeltaAI()) {
+      vector<double> scanEnd;
+      for(int i=0; i<N; i++) {
+//       Set xMax to the classical turning point for n=5 or ~3.5 times the groundstate turning point
+         double minW = min(V->GetCoordUtil()->omega[i],V2->GetCoordUtil()->omega[i]);
+         scanEnd.push_back(sqrt(2.0/minW/V->GetCoordUtil()->reducedMass[i]*(5.0+0.5)));
+               //Bohr, so twice that in Angrstrom
+      }
+      int scanSteps = 20;
+      double curX = 0.0;
+      string filepref = V->GetCoordUtil()->outFileName;
+      ofstream theFile;
+      ofstream theFile2;
+      ofstream theFile3;
+      theFile.open((filepref+".nGrid").c_str());
+      theFile << "400" << endl;
+      theFile.close();
+      theFile.open((filepref+".omegaMM").c_str());
+      theFile2.open((filepref+".omegaQM").c_str());
+      theFile3.open((filepref+".xMax").c_str());
+      for(int i=0; i<N; i++) {
+         theFile << V->GetCoordUtil()->omega[i] << "\t";
+         theFile2 << V2->GetCoordUtil()->omega[i] << "\t";
+         theFile3 << scanEnd[i] << "\t";
+      }
+      theFile  << endl;
+      theFile2 << endl;
+      theFile3 << endl;
+      theFile.close();
+      theFile2.close();
+      theFile3.close();
+      theFile.open((filepref+".massMM").c_str());
+      theFile2.open((filepref+".massQM").c_str());
+      for(int i=0; i<N; i++) {
+         theFile << V->GetCoordUtil()->reducedMass[i] << "\t";
+         theFile2<< V2->GetCoordUtil()->reducedMass[i] << "\t";
+      }
+      theFile  << endl;
+      theFile2 << endl;
+      theFile.close();
+      theFile2.close();
+      theFile.open((filepref+".beta").c_str());
+      theFile << eps*P << endl;
+      theFile.close();
+
+      theFile.open((filepref+".fullMM").c_str());
+      theFile2.open((filepref+".hoMM").c_str());
+      theFile3.open((filepref+".hoQM").c_str());
+      V2->GetV(part[0]);
+      if(rename("0_pimc.in","equib.in") != 0) {
+         cout << "Error writing qchem file in TestSystem!" << endl;
+      }
+      
+      for(int n=0; n<scanSteps; n++) {
+         for(int i=0; i<N; i++) {
+            curX = -scanEnd[i] + (2*scanEnd[i])/(double)(scanSteps-1)*(double)(n);
+            part[0][i].pos[0]=curX;
+            theFile << V->GetV(part[0]) << "\t";
+            theFile2 << -rho->ModifyPotential(part[0]) << "\t";
+            theFile3 << static_cast<V_QChem*>(V2)->GetVHO(part[0]) << "\t";
+            V2->GetV(part[0]);
+            //cout << "mv: " +toString(n)+"_pimc.in" << endl;
+            //cout << "to: "+ toString(n)+"_"+toString(i)+"_"+filepref+".in" << endl;
+            if(rename((toString(i+n*N+1)+"_pimc.in").c_str(),(toString(n)+"_"+toString(i)+"_"+filepref+".in").c_str()) != 0) {
+               cout << "Error writing qchem file in TestSystem!" << endl;
+            }
+            part[0][i].pos[0]=0.0;
+         }
+         theFile << endl;
+         theFile2 << endl;
+         theFile3 << endl;
+      }
+      theFile.close();
+      theFile2.close();
+      theFile3.close();
+      exit(-1);
+   }
+// DES)
+
 
    static int initRanSeed = -time(0);
    int bead, beadm1;
@@ -142,7 +275,7 @@ void TestSystem::Reset() {
    int snipBegin;
    int snipEnd;
 //        for (int j=0; j<N; j++) {}
-   for (int j=physics->numFrozModes; j<N; j++) {
+   for (int j=physics->lowFrozModes; j<N-physics->highFrozModes; j++) {
       for(int round=0; round<P/(levyInit+1); round++) {
          snipBegin = round*(levyInit+1);
 //				cout << "snipBegin = " << snipBegin << endl;
@@ -189,9 +322,8 @@ double TestSystem::GetWeight() {
    }
    else {
       CalcPotential();
-//		return potE*0.7;
       return potE*physics->lambdaTI;
-//		return potE;
+//    return potE;
    }
 }
 
@@ -208,49 +340,23 @@ double TestSystem::GetOldWeight() {
 
 double TestSystem::EstimatorV() {
    if(!physics->isDeltaAI()) {
-      CalcPotential();			//Might not need this
+      //CalcPotential();			//Might not need this
       return potE/((double)P);
    }
    else {
 // DES: running ab initio thermodynamic integration correction to molecular mechanics
       static int seed = -time(0);
-      int pickedSlice = P*(RandomNum::rand3(&seed));        //TODO: Make this random
-      //Propagator * freerho = new Rho_Free;
+      int pickedSlice = P*(RandomNum::rand3(&seed));
       double pickedV = V->GetV(part[pickedSlice],rho);
       double harmV = -rho->ModifyPotential(part[pickedSlice]);
-      //delete freerho;
       V2->GetV(part[pickedSlice]);
 
-      vFile << tempNum << "\t" << harmV << "\t" << pickedV << "\t" << endl;
+//DES TODO: Make this work for numTI > 1
+      vFile << tempNum << "\t" << harmV << "\t" << pickedV << endl;
 // DES Temp!!!!
       //vFile << tempNum << "\t" << part[pickedSlice][0].pos[0] << "\t" << harmV << "\t" << pickedV << "\t" << endl;
       tempNum++;
       
-      /*
-// DES Temp: Just print a .in file with geometry
-      ostringstream convert;
-      convert << tempNum;
-      string qchemName = convert.str() + "_pimc.in";
-//string qchemName = std::to_string(tempNum) + "_pimc.in";
-      qchemFile.open(qchemName.c_str());
-      int N = V->GetCoordUtil()->numPart;
-//	Get cartesians from normal modes
-      vector< vector<double> > cartPos = V->GetCoordUtil()->normalModeToCart(part[pickedSlice]);
-//	Write qchem inputfile
-      qchemFile << "$comments\nDES: deltaPIMC job\n$end\n" << endl;
-      qchemFile << "$molecule\n 0 1" << endl;
-      for(int i=0; i<N; i++) {
-      qchemFile << V->GetCoordUtil()->atomType[i] << "\t" << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2];
-      qchemFile << endl;
-      }
-      qchemFile << "$end\n" << endl;
-// B3LYP
-      qchemFile << "$rem\n         JOBTYPE           sp\n         EXCHANGE          B3LYP\n         BASIS             cc-pVTZ\n         SCF_GUESS         SAD\n         SCF_ALGORITHM     DIIS\n         MAX_SCF_CYCLES    200\n         SYM_IGNORE        TRUE\n         SYMMETRY          FALSE\n         UNRESTRICTED      TRUE\n         SCF_CONVERGENCE   8\n         THRESH         9\n         MEM_STATIC       1000 \n         MEM_TOTAL       4000\n$end" << endl;
-//            qchemFile << "$rem\n         JOBTYPE           sp\n         EXCHANGE          HF\n         CORRELATION          MP2\n         BASIS             cc-pVTZ\n   MP2_RESTART_NO_SCF   TRUE\n      purecart       2222\n         SCF_GUESS         READ\n         SCF_ALGORITHM     DIIS\n         THRESH_DIIS_SWITCH  4\n         MAX_SCF_CYCLES    200\n         SYM_IGNORE        TRUE\n         SYMMETRY          FALSE\n         UNRESTRICTED      TRUE\n         SCF_CONVERGENCE   8\n         DO_O2          0\n         THRESH         14\n         MEM_STATIC       1000 \n         MEM_TOTAL       4000\n$end" << endl;
-
-      qchemFile.close();
-      tempNum++;
-       */
       return pickedV;
    }
 //	return exp(double(-eps)*(potE));
@@ -299,7 +405,14 @@ void TestSystem::CalcPotential(){
    potE = 0;
    for(int i=0; i<P; i++){
       if(!upToDate[i]) {
+//DES: Set guessCarts and guessModes
+         V->GetCoordUtil()->guessCarts = oldCarts[i];
+         V->GetCoordUtil()->guessPart = oldPart[i];
          sliceV[i] = V->GetV(part[i], rho);
+         //V->GetCoordUtil()->useGuess = true;
+         V->GetCoordUtil()->useGuess = false;
+//DES: Read out new carts from guessCarts
+         newCarts[i] = V->GetCoordUtil()->guessCarts;
       }
       upToDate[i] = true;
       potE += sliceV[i];
@@ -307,7 +420,7 @@ void TestSystem::CalcPotential(){
 }
 
 
-void TestSystem::Move(vector<double> prob, int levyNum){
+void TestSystem::Move(vector<double> prob, int levyNum, int levyModes){
 //	cout << "Take a step" << endl;
    /*
 //	Random Walks
@@ -338,30 +451,50 @@ void TestSystem::Move(vector<double> prob, int levyNum){
       vector <double> levyMean;
       double levySigma;
       int bead, beadm1;
-//	Snip length must be at least 3 and shouldn't be more than P/2+1 (or 20) or else you'll just collapse it
+      vector <int> remainingPart;
+      for(int i=0; i<N; i++) {
+         remainingPart.push_back(i);
+      }
+//	Snip length must be at least 3 and shouldn't be more than P/2+1 or else you'll just collapse it
 //	snipLength-2 is the number of beads moved.
 //		int maxLevy = 30;
 //		int levyLength = min(static_cast<int>(prob[0]*(P-2)/2+1), maxLevy);
 //	*******************************************************
       levyLength = levyNum;
 //	*******************************************************
-      int iPart = static_cast<int>((N-physics->numFrozModes)*P*prob[1]);
-//		int iCoor = static_cast<int>(coorDim*prob[2]);
-      int pickedPart = int(iPart/P)+physics->numFrozModes;
-      int snipBegin = iPart%P;
+      int snipBegin = static_cast<int>(prob[levyModes]*P);
       int snipEnd = (snipBegin+levyLength+1)%P;
-
-//		cout << "SnipBegin: " << snipBegin << "\tSnipEnd" << snipEnd << "\tSnipLength:" << snipLength << endl;
-      if(N > physics->numFrozModes) {
-         for (int s=0; s<levyLength; s++) {
-            bead = (snipBegin+s+1)%P;
-            beadm1 = (snipBegin+s)%P;
-            levyMean = rho->GetLevyMean(part[beadm1][pickedPart], part[snipEnd][pickedPart], (double)(levyLength-s), eps, pickedPart);
-            levySigma = rho->GetLevySigma((double)(levyLength-s), eps, pickedPart) / sqrt(part[0][pickedPart].mass);
-            for(int k=0; k<coorDim; k++){
-               part[bead][pickedPart].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &seed);
+      int iPart, pickedPart;
+      for(int i=0; i<levyModes; i++) {
+         iPart = static_cast<int>((N-i-physics->lowFrozModes-physics->highFrozModes)*prob[i]);
+         //int pickedPart = int(iPart/P)+physics->lowFrozModes;
+         pickedPart = remainingPart[iPart+physics->lowFrozModes];
+         remainingPart.erase(remainingPart.begin()+iPart+physics->lowFrozModes);
+         //cout << "DES: PickedPart = " <<  pickedPart << endl;
+   /*
+         for(int i=0; i<N; i++) {
+            double tempAvg=0.0;
+            for(int j=0; j<P; j++) {
+               tempAvg+=part[j][i].pos[0];
             }
-            upToDate[bead] = false;
+            tempAvg/=P;
+            cout << tempAvg << "\t";
+         }
+         cout << endl;
+   */
+
+   //		cout << "SnipBegin: " << snipBegin << "\tSnipEnd" << snipEnd << "\tSnipLength:" << snipLength << endl;
+         if(N > physics->lowFrozModes+physics->highFrozModes) {
+            for (int s=0; s<levyLength; s++) {
+               bead = (snipBegin+s+1)%P;
+               beadm1 = (snipBegin+s)%P;
+               levyMean = rho->GetLevyMean(part[beadm1][pickedPart], part[snipEnd][pickedPart], (double)(levyLength-s), eps, pickedPart);
+               levySigma = rho->GetLevySigma((double)(levyLength-s), eps, pickedPart) / sqrt(part[0][pickedPart].mass);
+               for(int k=0; k<coorDim; k++){
+                  part[bead][pickedPart].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &seed);
+               }
+               upToDate[bead] = false;
+            }
          }
       }
    }
@@ -371,6 +504,7 @@ void TestSystem::Move(vector<double> prob, int levyNum){
 void TestSystem::Forget() {
    oldEnergy = energy;
    oldPotE = potE;
+   oldCarts = newCarts;
    for(int i=0; i<P; i++) {
       for(int j=0; j<N; j++) {
          oldPart[i][j].pos = part[i][j].pos;
@@ -382,6 +516,7 @@ void TestSystem::Forget() {
 void TestSystem::Undo() {
    energy = oldEnergy;
    potE = oldPotE;
+   newCarts = oldCarts;
    for(int i=0; i<P; i++) {
       for(int j=0; j<N; j++) {
          part[i][j].pos = oldPart[i][j].pos;
@@ -406,3 +541,10 @@ string TestSystem::GetRhoType() {
 PhysicsUtil* TestSystem::GetPhysics() {
    return physics;
 }
+
+string TestSystem::toString(int i) {
+   ostringstream convert;
+   convert << i;
+   return convert.str();
+}
+

@@ -11,8 +11,8 @@
 V_TinkerExecutable::V_TinkerExecutable(CoordUtil * coords) {
 //	tinkInFileName = "pimc.xyz";
 //	tinkOutFileName = "pimc.out";
-	tinkInFileName = coords->tinkerName + ".xyz";
-	tinkOutFileName = coords->tinkerName + ".outTinker";
+	tinkInFileName = coords->outFileName + ".xyz";
+	tinkOutFileName = coords->outFileName + ".outTinker";
 	tinkPrmFileName = coords->prmName;
 	coordKeeper = coords;
 

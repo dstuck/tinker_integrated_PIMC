@@ -28,7 +28,8 @@ public:
 	double morseDE;
 	double morseAlpha;
 	int numInit;
-   int numFrozModes;
+   int lowFrozModes;
+   int highFrozModes;
    double lambdaTI;
    bool deltaAbInit;
    int charge;

@@ -26,6 +26,7 @@
 #include "PhysicsUtil.h"
 #include <math.h>
 #include <iostream>
+#include <cstdio>
 #include <vector>
 #include <sstream>
 #include <fstream>
@@ -37,7 +38,7 @@ public:
 	virtual ~TestSystem();
 	void CalcEnergy();
 	void CalcPotential();
-	void Move(vector<double>, int);
+	void Move(vector<double> prob, int levyNum, int levyPart = 1);
 	void Forget();
 	void Undo();
 	void Reset();
@@ -50,6 +51,7 @@ public:
 	string GetRhoType();
 	PhysicsUtil* GetPhysics();
 	double Debug();
+        string toString(int);
 
 	bool ECheckFlag;
 	int P;
@@ -74,6 +76,8 @@ public:
 	vector<double> oldSliceV;
 	vector< vector<Particle> > part;
 	vector< vector<Particle> > oldPart;
+	vector< vector< vector<double> > > oldCarts;
+	vector< vector< vector<double> > > newCarts;
 
 //DES Temp
       ofstream vFile;      //TODO: Remove

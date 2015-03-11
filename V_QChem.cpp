@@ -8,7 +8,11 @@
 #include "V_QChem.h"
 
 
+bool absMax(double x, double y) {return fabs(x)<fabs(y); }
+
 V_QChem::V_QChem(CoordUtil* coords, CoordUtil* tinkCoords,  double eps, double beta, int _charge, int _spin) : coordKeeper(coords), tinkerCoords(tinkCoords), charge(_charge), spin(_spin) {
+
+   doubleTI = false;
 // Set rems
 
 // Set equib pos
@@ -32,6 +36,13 @@ V_QChem::V_QChem(CoordUtil* coords, CoordUtil* tinkCoords,  double eps, double b
 // Run equib frequency
 // qchem_freq();
 // DES: For now just used read in frequency
+
+   if(coordKeeper->scaleGeom) {
+// DES: Temp TODO: Make sure you want to comment this out!
+      //coordKeeper->MatchModes(tinkCoords);
+      //coordKeeper->MakeScalingVec(tinkCoords);
+   }
+
    tempNum=0;
 
 // Save vEquib and wQChem and set normal modes
@@ -45,8 +56,8 @@ V_QChem::V_QChem(CoordUtil* coords, CoordUtil* tinkCoords,  double eps, double b
 // Set up harmonic V for later
    qharmFile.open("qPotential.txt");
    harmV.omega = coordKeeper->omega;
-
 }
+
 
 V_QChem::~V_QChem() {
    delete coordKeeper;
@@ -64,26 +75,38 @@ double V_QChem::GetV(vector<Particle> part, Propagator * rho){
 double V_QChem::GetV(vector<Particle> part){
 
    double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
-   double V = 0.0;
-   double wScale;
-   double mScale;
-// Scale normal modes so that sampling is in same harmonic potential as MM
-   for(int i=0; i<coordKeeper->numModes; i++) {
-      mScale = sqrt(tinkerCoords->reducedMass[i]) / sqrt(coordKeeper->reducedMass[i]);
-      wScale = tinkerCoords->omega[i] / coordKeeper->omega[i];
-      part[i].pos[0] *= wScale * mScale;
+   vector< vector<double> > cartPos;
+   if(doubleTI) {
+//Old Junk
+      if(coordKeeper->scaleGeom) {
+         for(int i=0; i<coordKeeper->numModes; i++) {
+            part[i].pos[0] *= coordKeeper->scalingVec[i];
+         }
+         //cartPos = coordKeeper->normalModeToCart(part);
+         cartPos = tinkerCoords->normalModeToCart(part);
+         for(int j=0; j<cartPos.size(); j++) {
+            for(int k=0; k<cartPos[j].size(); k++) {
+               cartPos[j][k] += coordKeeper->initCart[j][k] - tinkerCoords->initCart[j][k];
+            }
+         }
+      }
+      else {
+         cout << "DES: I shouldn't be here!!" << endl;
+   //    Get cartesians from normal modes
+         cartPos = tinkerCoords->normalModeToCart(part);
+   // DES: converting from tinker initCarts to qchem using cartesians
+         for(int j=0; j<cartPos.size(); j++) {
+            for(int k=0; k<cartPos[j].size(); k++) {
+               cartPos[j][k] += coordKeeper->initCart[j][k] - tinkerCoords->initCart[j][k];
+            }
+         }
+      }
+   }
+   else {
+      cartPos = coordKeeper->normalModeToCart(part);
    }
 
-//	Get cartesians from normal modes
-// DES Temp:
-//   vector< vector<double> > cartPos = tinkerCoords->normalModeToCart(part);
-   vector< vector<double> > cartPos = coordKeeper->normalModeToCart(part);
-
 // DES: running ab initio thermodynamic integration correction to molecular mechanics
-//   int pickedSlice = 0;        //TODO: Make this random
-//            Propagator * freerho = new Rho_Free;
-//            double pickedV = V->GetV(part[pickedSlice], freerho);
-//            delete freerho;
 // DES Temp: Just print a .in file with geometry
    ostringstream convert;
    convert << tempNum;
@@ -92,38 +115,7 @@ double V_QChem::GetV(vector<Particle> part){
    qchemFile.open(qchemName.c_str());
    int N = coordKeeper->numPart;
 //	Get cartesians from normal modes
-   //vector< vector<double> > cartPos = coordKeeper->normalModeToCart(part[pickedSlice]);
-/*
-//DES Temp Temp:
-   cout << "QC cartPos in V_QChem" << endl;
-   for(int j=0; j<cartPos.size(); j++) {
-      for(int k=0; k<cartPos[j].size(); k++) {
-         cout << (cartPos[j][k] - coordKeeper->initCart[j][k])/0.52918 << endl;
-      }
-   }
 
-   cout <<"DES Temp: QC cton" << endl;
-   vector<double> normMode = coordKeeper->cartToNormalMode(cartPos);
-   cout << "QC Normal modes" << endl;
-   for(int i=0; i<part.size(); i++) {
-      cout << part[i].pos[0] << "\t" << normMode[i] << endl;
-   }
-   exit(-1);
-   cout << "QC Cartesians1" << endl;
-   for(int i=0; i<N; i++) {
-   cout << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2] << endl;
-   }
-
-   for(int i=0; i<part.size(); i++) {
-      part[i].pos[0] = normMode[i];
-   }
-   cartPos = coordKeeper->normalModeToCart(part);
-   cout << "QC Cartesians2" << endl;
-   for(int i=0; i<N; i++) {
-   cout << cartPos[i][0] << "\t" << cartPos[i][1] << "\t" << cartPos[i][2] << endl;
-   }
-   exit(-1);
-*/
 //	Write qchem inputfile
    qchemFile << "$comments\nDES: deltaPIMC job\n$end\n" << endl;
 //   qchemFile << "$molecule\n 0 1" << endl;
@@ -137,18 +129,44 @@ double V_QChem::GetV(vector<Particle> part){
    qchemFile << "$rem\n         JOBTYPE           sp\n         EXCHANGE          B3LYP\n         BASIS             cc-pVTZ\n         SCF_GUESS         SAD\n         SCF_ALGORITHM     DIIS\n         MAX_SCF_CYCLES    200\n         SYM_IGNORE        TRUE\n         SYMMETRY          FALSE\n         UNRESTRICTED      TRUE\n         SCF_CONVERGENCE   6\n         THRESH         9\n         MEM_STATIC       1000 \n         MEM_TOTAL       4000\n$end" << endl;
 //            qchemFile << "$rem\n         JOBTYPE           sp\n         EXCHANGE          HF\n         CORRELATION          MP2\n         BASIS             cc-pVTZ\n   MP2_RESTART_NO_SCF   TRUE\n      purecart       2222\n         SCF_GUESS         READ\n         SCF_ALGORITHM     DIIS\n         THRESH_DIIS_SWITCH  4\n         MAX_SCF_CYCLES    200\n         SYM_IGNORE        TRUE\n         SYMMETRY          FALSE\n         UNRESTRICTED      TRUE\n         SCF_CONVERGENCE   8\n         DO_O2          0\n         THRESH         14\n         MEM_STATIC       1000 \n         MEM_TOTAL       4000\n$end" << endl;
    qchemFile.close();
- 
-   vector<double> modes = coordKeeper->cartToNormalMode(cartPos);
-//   cout << "QC Normal modes" << endl;
-//   for(int i=0; i<part.size(); i++) {
-//      cout << part[i].pos[0] << "\t" << modes[i] << endl;
-//   }
-   vector<Particle> tempPart;
-   for(int i=0; i<modes.size(); i++) {
-      tempPart.push_back(Particle(modes[i],1));
-      tempPart[i].mass = coordKeeper->reducedMass[i];
+
+   double potHarm;
+   if(doubleTI) {
+//Old Junk
+      cout << "DES: I shouldn't be here!!" << endl;
+      vector<Particle> tempPart;
+         vector<double> modes;
+
+      if(tinkerCoords->internals) {
+         tinkerCoords->internals=false;
+         cartPos = tinkerCoords->normalModeToCart(part);
+         for(int j=0; j<cartPos.size(); j++) {
+            for(int k=0; k<cartPos[j].size(); k++) {
+               cartPos[j][k] += coordKeeper->initCart[j][k] - tinkerCoords->initCart[j][k];
+            }
+         }
+         modes = coordKeeper->cartToNormalMode(cartPos);
+         tinkerCoords->internals=true;
+      }
+      else {
+         modes = coordKeeper->cartToNormalMode(cartPos);
+      }
+   //   cout << "QC Normal modes" << endl;
+   //   for(int i=0; i<part.size(); i++) {
+   //      cout << part[i].pos[0] << "\t" << modes[i] << endl;
+   //   }
+      for(int i=0; i<modes.size(); i++) {
+         tempPart.push_back(Particle(modes[i],1));
+         tempPart[i].mass = coordKeeper->reducedMass[i];
+      }
+      potHarm = harmV.GetV(tempPart);
+   //   for(int i=0; i<tempPart.size(); i++) {
+   //      cout << i << "\t" << tempPart[i].pos[0] << endl;
+   //   }
    }
-   double potHarm = harmV.GetV(tempPart);
+   else {
+      potHarm = harmV.GetV(part);
+   }
    qharmFile << tempNum << "\t" << potHarm << endl;
 
    tempNum++;
@@ -157,6 +175,61 @@ double V_QChem::GetV(vector<Particle> part){
 //      V -= vEquib;
 //	return V;
    return 0.0;
+}
+
+double V_QChem::GetVHO(vector<Particle> part){
+
+   if(doubleTI) {
+//Old Junk
+      cout << "DES: I shouldn't be here!!" << endl;
+      vector< vector<double> > cartPos;
+      if(coordKeeper->scaleGeom) {
+         for(int i=0; i<coordKeeper->numModes; i++) {
+            part[i].pos[0] *= coordKeeper->scalingVec[i];
+         }
+         //cartPos = coordKeeper->normalModeToCart(part);
+         cartPos = tinkerCoords->normalModeToCart(part);
+         for(int j=0; j<cartPos.size(); j++) {
+            for(int k=0; k<cartPos[j].size(); k++) {
+               cartPos[j][k] += coordKeeper->initCart[j][k] - tinkerCoords->initCart[j][k];
+            }
+         }
+      }
+      else {
+   //    Get cartesians from normal modes
+         cartPos = tinkerCoords->normalModeToCart(part);
+   // DES: converting from tinker initCarts to qchem using cartesians
+         for(int j=0; j<cartPos.size(); j++) {
+            for(int k=0; k<cartPos[j].size(); k++) {
+               cartPos[j][k] += coordKeeper->initCart[j][k] - tinkerCoords->initCart[j][k];
+            }
+         }
+      }
+      vector<Particle> tempPart;
+      vector<double> modes;
+
+      if(tinkerCoords->internals) {
+         tinkerCoords->internals=false;
+         cartPos = tinkerCoords->normalModeToCart(part);
+         for(int j=0; j<cartPos.size(); j++) {
+            for(int k=0; k<cartPos[j].size(); k++) {
+               cartPos[j][k] += coordKeeper->initCart[j][k] - tinkerCoords->initCart[j][k];
+            }
+         }
+         modes = coordKeeper->cartToNormalMode(cartPos);
+         tinkerCoords->internals=true;
+      }
+      else {
+         modes = coordKeeper->cartToNormalMode(cartPos);
+      }
+      for(int i=0; i<modes.size(); i++) {
+         tempPart.push_back(Particle(modes[i],1));
+         tempPart[i].mass = coordKeeper->reducedMass[i];
+      }
+      return harmV.GetV(tempPart);
+   }
+   return harmV.GetV(part);
+
 }
 
 string V_QChem::GetType() {

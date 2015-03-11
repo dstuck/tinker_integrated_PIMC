@@ -7,10 +7,10 @@
 
 #include "Simulation.h"
 
-Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
+Simulation::Simulation(string inFileName, string logFileName, string prmFile) : autoCorr(1000) {
 
 //*******************************************************
-//*				  Default Parameters				    *
+//*		  Default Parameters			*
 //*******************************************************
 /*
 	stepNum = 0;
@@ -28,6 +28,8 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
         maxSim = 1;
         bool readOmega = false;
         bool readGeom = false;
+        bool internalCoords = false;
+        bool scaleGeom = false;
 	int nPart = 0;
 	int pSlice = 0;
 	int nMode;
@@ -44,6 +46,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 //	}
 //	int a = 1;	// Atomic number
 	levyNum = 30;
+      levyModes = 0;
     numTI = 0;
 	vector<double> mass;
 	vector<string> atomType;
@@ -143,6 +146,9 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 					else if(lineTokens[0].find("levyNum") != std::string::npos) {
 						levyNum = atoi(lineTokens[1].c_str());
 					}
+					else if(lineTokens[0].find("levyModes") != std::string::npos) {
+						levyModes = atoi(lineTokens[1].c_str());
+					}
 					else if(lineTokens[0].find("levyInit") != std::string::npos) {
 						physicsParams->numInit = atoi(lineTokens[1].c_str());
 					}
@@ -159,7 +165,13 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 						physicsParams->morseAlpha = atof(lineTokens[1].c_str());
 					}
 					else if(lineTokens[0].find("numFrozModes") != std::string::npos) {
-						physicsParams->numFrozModes = atof(lineTokens[1].c_str());
+						physicsParams->lowFrozModes = atof(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("lowFrozModes") != std::string::npos) {
+						physicsParams->lowFrozModes = atof(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("highFrozModes") != std::string::npos) {
+						physicsParams->highFrozModes = atof(lineTokens[1].c_str());
 					}
 					else if(lineTokens[0].find("numTI") != std::string::npos) {
 					        numTI=atoi(lineTokens[1].c_str());
@@ -178,6 +190,16 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 					else if(lineTokens[0].find("readGeom") != std::string::npos) {
                                             if(atof(lineTokens[1].c_str())>0) {
                                                 readGeom = true;
+                                            }
+					}
+					else if(lineTokens[0].find("internalCoords") != std::string::npos) {
+                                            if(atof(lineTokens[1].c_str())>0) {
+                                                internalCoords = true;
+                                            }
+					}
+					else if(lineTokens[0].find("scaleGeom") != std::string::npos) {
+                                            if(atof(lineTokens[1].c_str())>0) {
+                                                scaleGeom = true;
                                             }
 					}
 					else if(lineTokens[0].find("readOmega") != std::string::npos) {
@@ -318,7 +340,10 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 		cout << "omega dim = " << omega.size() << " but mass dim = " << mass.size() << endl;
 		exit (-1);
 	}
-        if(int(connectivity.size()) != nPart) {
+        if(nPart == 0) {
+            nPart = connectivity.size();
+        }
+        else if(int(connectivity.size()) != nPart) {
 		cout << "Error, number of atoms not equal to number of coordinates" << endl;
 		cout << "connectivity dim = " << connectivity.size() << " but nPart = " << nPart << endl;
 		exit (-1);
@@ -330,6 +355,17 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 // TODO: Doesn't work for linear molecules!
 		nMode = nPart*3-6;
 	}
+      if(levyModes==0) {
+         levyModes = nMode - (physicsParams->lowFrozModes+physicsParams->highFrozModes);
+      }
+      else if(levyModes>nMode - (physicsParams->lowFrozModes+physicsParams->highFrozModes)) {
+         cout << "Error, total modes moved > number of modes!" << endl;
+         exit(-1);
+      }
+      if(physicsParams->lowFrozModes+physicsParams->highFrozModes > nMode) {
+         cout << "Error, total frozen modes > number of modes!" << endl;
+         exit(-1);
+      }
 	coorDim = 1;
 //		nMode = nPart;
 //		coorDim = 3;
@@ -380,7 +416,8 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	}
 */
 
-	CoordUtil * coords = new CoordUtil(nMode, nPart, modes, omega, mass, initPos, atomType, paramType, connectivity, outName, prmFile, readGeom, readOmega);
+	CoordUtil * coords = new CoordUtil(nMode, nPart, internalCoords,  modes, omega, mass, initPos, atomType, paramType, connectivity, outName, prmFile, readGeom, readOmega);
+        coords->scaleGeom = scaleGeom;
 	sys = new TestSystem(pSlice, beta, coords, physicsParams);
 	simStats = new Stats();
 	simPotStats = new Stats();
@@ -405,28 +442,42 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) {
 	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
 	logFile << inFileName << endl;
 	logFile << "Potential: " << sys->GetVType() << "\t Propagator: " << sys->GetRhoType() << endl;
-	logFile << "P: "<< pSlice << ", N: "<< nPart << ", Beta: " << beta << ", levyNum: " << levyNum << "\n" << "maxSim: " << maxSim << ", maxStep: " << maxStep << ", sampleFreq: " << sampleFreq << ", convFreq: " << convFreq << ", storeFreq: " << storeFreq << endl;
-// TODO: check numfrozmodes <= modes
-        if(physicsParams->numFrozModes>0) {
+	logFile << "P: "<< pSlice << ", N: "<< nPart << ", Beta: " << beta << ", levyModes: " << levyModes << ", levyNum: " << levyNum << "\n" << "maxSim: " << maxSim << ", maxStep: " << maxStep << ", sampleFreq: " << sampleFreq << ", convFreq: " << convFreq << ", storeFreq: " << storeFreq << endl;
+        if(physicsParams->lowFrozModes+physicsParams->highFrozModes>0) {
             logFile << "Frozen Modes:" << endl;
         }
-        for(int i=0; i<physicsParams->numFrozModes; i++) {
+        for(int i=0; i<physicsParams->lowFrozModes; i++) {
             logFile << coords->omega[i]/0.00000455633 << "\t";
             if((i)%10==9) {
                logFile << "\n";
             }
         }
-        if(physicsParams->numFrozModes>0) {
+        for(int i=(int)coords->omega.size()-physicsParams->highFrozModes; i<(int)coords->omega.size(); i++) {
+            logFile << coords->omega[i]/0.00000455633 << "\t";
+            if((i)%10==9) {
+               logFile << "\n";
+            }
+        }
+        if(physicsParams->lowFrozModes+physicsParams->highFrozModes>0) {
             logFile << endl;
         }
         logFile << "Active Modes:" << endl;
-        for(int i=physicsParams->numFrozModes; i<(int)coords->omega.size(); i++) {
+        for(int i=physicsParams->lowFrozModes; i<(int)coords->omega.size()-physicsParams->highFrozModes; i++) {
             logFile << coords->omega[i]/0.00000455633 << "\t";
-            if((i-physicsParams->numFrozModes)%10==9) {
+            if((i-physicsParams->lowFrozModes)%10==9) {
                logFile << "\n";
             }
         }
         logFile << endl;
+        if(!coords->readGeom) {
+            logFile << "DES: Coords after opt" << endl;
+            for(int j=0; j<coords->numPart; j++) {
+               for(int k=0; k<3; k++) {
+                  logFile << coords->initCart[j][k] << "\t";
+               }
+               logFile << endl;
+            }
+        }
 
 //	srand(time(NULL));
 	idum = new int;
@@ -457,11 +508,12 @@ void Simulation::TakeStep(){
 //	rand();
 	vector<double> x;
 //	x.push_back(RandomNum::rangau(0,1,idum));
-//	for(int n = 0; n < 2; n++){
-	for(int n = 0; n < 4; n++){
+//	for(int n = 0; n < 4; n++){
+//	for(int n = 0; n < 3+levyModes; n++){
+	for(int n = 0; n < levyModes+1; n++){
 		x.push_back(RandomNum::rand3(idum));
 	}
-	sys->Move(x, levyNum);
+	sys->Move(x, levyNum, levyModes);
 }
 
 bool Simulation::Check(){
@@ -492,13 +544,33 @@ void Simulation::Revert(){
 }
 
 void Simulation::Sample(){
+        if(stepNum < sampleStart) {
+            if(numTI==0) {
+// If not TI use E
+               autoCorr.AddVal(sys->EstimatorE());
+            }
+            else {
+               autoCorr.AddVal(sys->EstimatorV());
+            }
+        }
+        if(stepNum == sampleStart/5) {
+            autoCorr.Reset();
+        }
+        if(stepNum == sampleStart) {
+            autoCorr.GetTau();
+//            vector<double> corrFunc = autoCorr.GetCorr();
+//            for(int i=0; i< corrFunc.size(); i++) {
+//               cout << i << "\t" << corrFunc[i] << endl;
+//            }
+//            exit(-1);
+        }
 	if((stepNum > sampleStart)&&(stepNum%convFreq==0)){
 		convergenceStats->AddVal(sys->EstimatorE());
 //		cout << "Energy: " << sys->EstimatorE() << endl;
 	}
+// DES TODO: Don't estimate E if doing TI
 	if((stepNum > sampleStart)&&(stepNum%sampleFreq==0)) {
 		energyStats->AddVal(sys->EstimatorE());
-//DES Temp:
                 if(!sys->GetPhysics()->isDeltaAI()) {
 		    potentialStats->AddVal(sys->EstimatorV());
                 }
@@ -511,11 +583,14 @@ void Simulation::Sample(){
 //		comboStats->AddVal(sys->EstimatorV()*sys->EstimatorE());
 		vector< vector<Particle>  > part = sys->GetParticle();
 /* xstats
+                double tempX = 0.0;
 		for(int i=0; i<(int)part.size(); i++) {
 			for(int j=0; j<(int)part[0].size(); j++) {
-				xStats->AddVal(part[i][j].pos[0]-part[(i+1)%part.size()][j].pos[0]);
+                                tempX += part[i][j].pos[0];
+				//xStats->AddVal(part[i][j].pos[0]-part[(i+1)%part.size()][j].pos[0]);
 			}
 		}
+	        xStats->AddVal(tempX/part.size()/part[0].size());
 */
 // To restore function uncomment posFile above
 //		if((stepNum-sampleStart)/(double)sampleFreq < 5000) {
@@ -770,6 +845,18 @@ void Simulation::GetGaussianQuad(int nti, vector<double>& points, vector<double>
         weights.push_back(0.652145);
         points.push_back(0.861136);
         weights.push_back(0.34785);
+    }
+    else if(nti==5) {
+      weights.push_back(0.2369268850561891);
+      points.push_back(-0.9061798459386640);
+      weights.push_back(0.4786286704993665);
+      points.push_back(-0.5384693101056831);
+      weights.push_back(0.5688888888888889);
+      points.push_back(0.0000000000000000);
+      weights.push_back(0.4786286704993665);
+      points.push_back(0.5384693101056831);
+      weights.push_back(0.2369268850561891);
+      points.push_back(0.9061798459386640);
     }
     else {
         cout << "ERROR: nti > 4 not implemented yet in Simulation::GetGaussianQuad" << endl;

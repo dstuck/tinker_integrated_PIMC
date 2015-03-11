@@ -9,6 +9,7 @@
 #define VAQO_H_
 
 #include "debug.h"
+#include "CoordUtil.h"
 #include "Potential.h"
 #include "Propagator.h"
 #include "Particle.h"
@@ -23,7 +24,9 @@ public:
 	V_AQO(vector<double>, vector<double>);
 	virtual ~V_AQO();
 	double GetV(vector<Particle>, Propagator *);
+	double GetV(vector<Particle>);
 	string GetType();
+        CoordUtil* GetCoordUtil();
 
 	double V;
 	vector<double> omega;

@@ -26,7 +26,16 @@ V_UCHO::~V_UCHO() {
 }
 
 double V_UCHO::GetV(vector<Particle> part, Propagator * rho) {
-	V = 0;
+	double V = 0;
+        V += GetV(part);
+//	cout << "V: " << V << endl;
+	V += rho->ModifyPotential(part);
+//	cout << "V: " << V << endl;
+	return V;
+}
+
+double V_UCHO::GetV(vector<Particle> part) {
+	double V = 0;
 //	cout <<"w = ";
 //	for(int i = 0; i < int(omega.size()); i++) {
 //		cout << omega[i] << ", ";
@@ -43,13 +52,15 @@ double V_UCHO::GetV(vector<Particle> part, Propagator * rho) {
 			V += (part[j].pos[k])*(part[j].pos[k])/2.0*omega[j]*omega[j]*part[j].mass;
 		}
 	}
-//	cout << "V: " << V << endl;
-	V += rho->ModifyPotential(part);
-//	cout << "V: " << V << endl;
 	return V;
 }
 
 string V_UCHO::GetType() {
 	string name = "UCHO";
 	return name;
+}
+
+CoordUtil* V_UCHO::GetCoordUtil() {
+        cout << "ERROR: CoordUtil not supported in UCHO" << endl;
+        return NULL;
 }

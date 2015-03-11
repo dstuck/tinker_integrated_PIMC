@@ -1,0 +1,20 @@
+#include <stdlib.h>
+#include "qchem.h"
+
+namespace optking {
+  void optking(void);
+}
+
+int main(int argc, char* argv[])
+{
+
+  qink_init(argv,argc);
+
+  terseOut(QINK_OPT2MAN);
+
+  optking();
+
+  qink_exit();
+
+  return EXIT_SUCCESS;
+}

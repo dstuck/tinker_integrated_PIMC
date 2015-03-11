@@ -28,19 +28,29 @@ V_AQO::V_AQO(vector<double> w, vector<double> l) {
 
 double V_AQO::GetV(vector<Particle> part, Propagator * rho) {
 	V = 0;
+        V += GetV(part);
+	V += rho->ModifyPotential(part);
+	return V;
+}
+double V_AQO::GetV(vector<Particle> part) {
+	V = 0;
 	int dim = part[0].pos.size();
 	for(int j=0; j<(int)part.size(); j++) {
 		for(int k=0; k<dim; k++) {
 			V += (part[j].pos[k])*(part[j].pos[k])/2.0*omega[j]*omega[j]*part[j].mass + (part[j].pos[k])*(part[j].pos[k])*(part[j].pos[k])*(part[j].pos[k])*lambda[j];
 		}
 	}
-	V += rho->ModifyPotential(part);
 	return V;
 }
 
 string V_AQO::GetType() {
 	string name = "AQO";
 	return name;
+}
+
+CoordUtil* V_AQO::GetCoordUtil() {
+        cout << "ERROR: CoordUtil not supported in UCHO" << endl;
+        return NULL;
 }
 
 V_AQO::~V_AQO() {

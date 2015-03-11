@@ -18,7 +18,6 @@
 #include <math.h>
 #include <iostream>
 #include <vector>
-#include <fstream>
 using namespace std;
 
 class V_Tinker: public Potential {
@@ -26,15 +25,13 @@ public:
 	V_Tinker(CoordUtil*, double, double);
 	virtual ~V_Tinker();
 	double GetV(vector<Particle>, Propagator *);
+	double GetV(vector<Particle>);
 	string GetType();
+        CoordUtil* GetCoordUtil();
 	void Tokenize(const string&, vector<string>&, const string& = " ");
 
 	double vEquib;        //in kcal/mole
-	std::string tinkInFileName;
-	std::string tinkOutFileName;
 	std::string tinkPrmFileName;
-	ofstream inFile;
-	ifstream outFile;
 	CoordUtil* coordKeeper;
         vector<double> wTinker;
 };

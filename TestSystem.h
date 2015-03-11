@@ -16,6 +16,7 @@
 #include "V_Morse.h"
 #include "V_TinkerExecutable.h"
 #include "V_Tinker.h"
+#include "V_QChem.h"
 #include "Propagator.h"
 #include "Rho_Free.h"
 #include "Rho_HO.h"
@@ -25,7 +26,10 @@
 #include "PhysicsUtil.h"
 #include <math.h>
 #include <iostream>
+#include <cstdio>
 #include <vector>
+#include <sstream>
+#include <fstream>
 using namespace std;
 
 class TestSystem: public System {
@@ -34,7 +38,7 @@ public:
 	virtual ~TestSystem();
 	void CalcEnergy();
 	void CalcPotential();
-	void Move(vector<double>, int);
+	void Move(vector<double> prob, int levyNum, int levyPart = 1);
 	void Forget();
 	void Undo();
 	void Reset();
@@ -47,6 +51,7 @@ public:
 	string GetRhoType();
 	PhysicsUtil* GetPhysics();
 	double Debug();
+        string toString(int);
 
 	bool ECheckFlag;
 	int P;
@@ -63,6 +68,7 @@ public:
 	double avgV;
 	int numSteps;
 	Potential * V;
+	Potential * V2;
 	Propagator * rho;
         PhysicsUtil * physics;
 	vector<bool> upToDate;
@@ -70,6 +76,13 @@ public:
 	vector<double> oldSliceV;
 	vector< vector<Particle> > part;
 	vector< vector<Particle> > oldPart;
+	vector< vector< vector<double> > > oldCarts;
+	vector< vector< vector<double> > > newCarts;
+
+//DES Temp
+      ofstream vFile;      //TODO: Remove
+      int tempNum;      //TODO: Remove
+//        ofstream qchemFile;  //TODO: Delete this
 };
 
 #endif /* CLASSICALSYS_H_ */

@@ -12,6 +12,7 @@
 #include "Potential.h"
 #include "Propagator.h"
 #include "Particle.h"
+#include "CoordUtil.h"
 #include <iostream>
 #include <vector>
 using namespace std;
@@ -24,9 +25,10 @@ public:
 	V_UCHO(double, int);
 	virtual ~V_UCHO();
 	double GetV(vector<Particle>, Propagator *);
+	double GetV(vector<Particle>);
 	string GetType();
+        CoordUtil* GetCoordUtil();
 
-	double V;
 	vector<double> omega;
 };
 

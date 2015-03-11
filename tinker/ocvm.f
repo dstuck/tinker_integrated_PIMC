@@ -276,11 +276,11 @@ c
 c
 c     write intermediate results for the current iteration
 c
-         if (iwrite .gt. 0) then
-            if (mod(niter,iwrite) .eq. 0) then
-               call optsave (niter,f0,x0)
-            end if
-         end if
+c         if (iwrite .gt. 0) then
+c            if (mod(niter,iwrite) .eq. 0) then
+c               call optsave (niter,f0,x0)
+c            end if
+c         end if
 c
 c     before starting the next iteration, check to see whether
 c     the gradient norm, function decrease or iteration limit

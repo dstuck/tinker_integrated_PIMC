@@ -8,9 +8,10 @@
 #ifndef EST_AUTOCORR_H_
 #define EST_AUTOCORR_H_
 
-#include<cmath>
-#include<deque>
-#include<vector>
+#include <cmath>
+#include <deque>
+#include <vector>
+#include <fstream>
 #include "armadillo"
 #include "Stats.h"
 
@@ -25,6 +26,9 @@ class Est_AutoCorr {
       void AddVal(double);
       vector<double> GetCorr();
       double GetTau();
+      double GetTotalMean();
+      double GetTotalVariance();
+      double GetTotalStDev();
 
       int maxHist;
       int nSamples;

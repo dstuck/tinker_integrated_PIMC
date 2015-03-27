@@ -58,7 +58,8 @@ double Stats::GetRMS() {
 
 double Stats::GetVariance() {
 	if(numVals>0) {
-		return (squareSum/(double)numVals - (sum/(double)numVals)*(sum/(double)numVals))/(double)numVals;
+		return squareSum/(double)numVals - (sum/(double)numVals)*(sum/(double)numVals);
+		//return (squareSum/(double)numVals - (sum/(double)numVals)*(sum/(double)numVals))/(double)numVals;
 	}
 	else {
 		return 0.0;

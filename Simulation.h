@@ -32,7 +32,6 @@ class Simulation {
       void Revert();
       void Sample();
       void Run();
-      void FinalPrint();     //TODO: Remove
       void WritePosToFile();
       void Log();
       void FinalLog();
@@ -43,18 +42,24 @@ class Simulation {
       void GetLobattoQuad(int, vector<double>&, vector<double>&);
       void GetLinearQuad(int, vector<double>&, vector<double>&);
 
-      int maxSim;
-      int stepNum;      //TODO: Remove
+      int initLen;
+      int autoCorrLen;     //if set, overwrites sampleStart, numSamples, maxStep
+      int maxSim;        //Old Var
+      int stepNum;
       int maxStep;
       int sampleStart;
+      int numSamples;      //temp variable to overwrite maxStep
       int sampleFreq;
-      int convFreq;
+      int convFreq;        //TODO: Remove
       int storeFreq;
+      int storeNum;        //temp variable to overwrite storeFreq
       int levyNum;
       int levyModes;
       int numTI;
       int * idum;
 //		int * idum2;
+      double tau;
+      double errorThresh;
       double beta;			//TODO: Remove
       double epsTemp;
       double stepSize;
@@ -65,10 +70,8 @@ class Simulation {
       Est_AutoCorr autoCorr;
       Stats * simStats;
       Stats * simPotStats;
-//		Stats * simComboStats;      //TODO: Remove
       Stats * energyStats;
       Stats * potentialStats;
-//		Stats * comboStats;
       Stats * convergenceStats;
       Stats * acceptanceStats;
       Stats * xStats;		//TODO: Remove

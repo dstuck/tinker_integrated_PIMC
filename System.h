@@ -27,6 +27,7 @@ public:
 	virtual double GetOldWeight() = 0;
 	virtual vector< vector<Particle> > GetParticle() = 0;
 	virtual double Debug() = 0;
+	virtual double GetHarmonicE() = 0;
 	virtual string GetVType() = 0;
 	virtual string GetRhoType() = 0;
     virtual PhysicsUtil* GetPhysics() = 0;

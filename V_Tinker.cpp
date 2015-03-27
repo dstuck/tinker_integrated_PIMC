@@ -56,13 +56,13 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
          }
       }
       coordKeeper->guessCarts = coordKeeper->initCart;
-      cout << "DES: Coords after opt" << endl;
-      for(int j=0; j<nPart; j++) {
-         for(int k=0; k<3; k++) {
-            cout << xyzCoord[k+j*3] << "\t";
-         }
-         cout << endl;
-      }
+//      cout << "DES: Coords after opt" << endl;
+//      for(int j=0; j<nPart; j++) {
+//         for(int k=0; k<3; k++) {
+//            cout << xyzCoord[k+j*3] << "\t";
+//         }
+//         cout << endl;
+//      }
    }
 
 //    Set up tinker normal modes and frequencies!
@@ -108,12 +108,6 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
    else {
 //cout << "DES Temp: Reading in frequencies from file" << endl;
    }
-
-   double clHarmFull = 0.0;
-   for(int i=0; i<N; i++) {
-      clHarmFull += coordKeeper->omega[i]/2.0;
-   }
-   cout << "Harmonic Energy is: " << clHarmFull << endl;
 
 //    Get vEquib
    double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012

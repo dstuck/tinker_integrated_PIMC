@@ -73,6 +73,12 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
       cout << "Error in selecing V" << endl;
       exit(-1);
    }
+   harmonicE = 0.0;
+   for(int i=0; i<N; i++) {
+      harmonicE += coords->omega[i]/2.0;
+   }
+   //cout << "Harmonic Energy is: " << harmonicE << endl;
+
    coords->initInternals();
 
    if(phys->isDeltaAI()) {
@@ -528,6 +534,11 @@ void TestSystem::Undo() {
 
 double TestSystem::Debug() {
    return potE;
+}
+
+double TestSystem::GetHarmonicE() {
+//   cout << "Harmonic Energy is: " << harmonicE << endl;
+   return harmonicE;
 }
 
 string TestSystem::GetVType() {

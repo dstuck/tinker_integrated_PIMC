@@ -46,8 +46,16 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 //	}
 //	int a = 1;	// Atomic number
 	levyNum = 30;
-      levyModes = 0;
-    numTI = 0;
+        levyModes = 0;
+        numTI = 0;
+        errorThresh = 0.05;
+        tau = -1.0;
+        storeNum = -1;
+        maxStep = -1;
+        sampleStart = -1;
+        initLen = -1;
+        autoCorrLen = 40000;
+        sampleFreq = 1;
 	vector<double> mass;
 	vector<string> atomType;
 	vector<int> paramType;
@@ -107,6 +115,8 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 //				cout << lineRead << endl;
 				if(lineRead.find("!") != std::string::npos) {
 				}
+				else if(lineRead.find_first_not_of(" \t\r\n") == std::string::npos) {
+				}
 				else {
 					vector<string> lineTokens;
 					Tokenize(lineRead, lineTokens);
@@ -121,6 +131,12 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 					else if(lineTokens[0].find("maxStep") != std::string::npos) {
 						maxStep = atoi(lineTokens[1].c_str());
 					}
+					else if(lineTokens[0].find("initLen") != std::string::npos) {
+						initLen = atoi(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("autoCorrLen") != std::string::npos) {
+						autoCorrLen = atoi(lineTokens[1].c_str());
+					}
 					else if(lineTokens[0].find("sampleStart") != std::string::npos) {
 						sampleStart = atoi(lineTokens[1].c_str());
 					}
@@ -132,6 +148,12 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 					}
 					else if(lineTokens[0].find("storeFreq") != std::string::npos) {
 						storeFreq = atoi(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("storeNum") != std::string::npos) {
+						storeNum = atoi(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("errorThresh") != std::string::npos) {
+						errorThresh = double(atoi(lineTokens[1].c_str()))/10000.0;
 					}
 					else if(lineTokens[0].find("beta") != std::string::npos) {
 						beta = atof(lineTokens[1].c_str());
@@ -333,10 +355,37 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 			}
 		} //end of reading $modes section
 	} // end of reading .pin file
+//**********************
+//* Variable Cleanup
+//**********************
+// Set up job length parameters(
+      if(autoCorrLen<=0 || maxSim > 1) {
+         cout << "Warning: Not using new standard of autoCorrLen > 0 and maxSim = 1. Continue at your own risk!" << endl;
+      }
+      if(initLen<0 && autoCorrLen > 0) {
+         initLen = autoCorrLen/4;
+      }
+      if(sampleStart>=0) {
+         if(initLen < 0) {
+            initLen = sampleStart;
+         }
+         else if((initLen+autoCorrLen) != sampleStart) {
+            cout << "Error: sampleStart != initLen+autoCorrLen" << endl;
+            exit(-1);
+         }
+      }
+      if(autoCorrLen >= 0) {
+         sampleStart = initLen + autoCorrLen;
+      }
+      else {
+         sampleStart = initLen;
+      }
+//      cout << "DES: sampleStart = " << sampleStart << endl;
+      maxStep = max(maxStep,sampleStart+1);
+// )
 
-// A few conversions:
 	if(int(omega.size())!=int(mass.size())){
-		cout << "Error, number of reduced masses not equal to number of frequencies" << endl;
+		cout << "Error: Number of reduced masses not equal to number of frequencies" << endl;
 		cout << "omega dim = " << omega.size() << " but mass dim = " << mass.size() << endl;
 		exit (-1);
 	}
@@ -344,7 +393,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
             nPart = connectivity.size();
         }
         else if(int(connectivity.size()) != nPart) {
-		cout << "Error, number of atoms not equal to number of coordinates" << endl;
+		cout << "Error: Number of atoms not equal to number of coordinates" << endl;
 		cout << "connectivity dim = " << connectivity.size() << " but nPart = " << nPart << endl;
 		exit (-1);
         }
@@ -355,15 +404,16 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 // TODO: Doesn't work for linear molecules!
 		nMode = nPart*3-6;
 	}
+
       if(levyModes==0) {
          levyModes = nMode - (physicsParams->lowFrozModes+physicsParams->highFrozModes);
       }
       else if(levyModes>nMode - (physicsParams->lowFrozModes+physicsParams->highFrozModes)) {
-         cout << "Error, total modes moved > number of modes!" << endl;
+         cout << "Error: Total modes moved > number of modes!" << endl;
          exit(-1);
       }
       if(physicsParams->lowFrozModes+physicsParams->highFrozModes > nMode) {
-         cout << "Error, total frozen modes > number of modes!" << endl;
+         cout << "Error: Total frozen modes > number of modes!" << endl;
          exit(-1);
       }
 	coorDim = 1;
@@ -442,7 +492,8 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
 	logFile << inFileName << endl;
 	logFile << "Potential: " << sys->GetVType() << "\t Propagator: " << sys->GetRhoType() << endl;
-	logFile << "P: "<< pSlice << ", N: "<< nPart << ", Beta: " << beta << ", levyModes: " << levyModes << ", levyNum: " << levyNum << "\n" << "maxSim: " << maxSim << ", maxStep: " << maxStep << ", sampleFreq: " << sampleFreq << ", convFreq: " << convFreq << ", storeFreq: " << storeFreq << endl;
+	//logFile << "P: "<< pSlice << ", N: "<< nPart << ", Beta: " << beta << ", levyModes: " << levyModes << ", levyNum: " << levyNum << "\n" << "maxSim: " << maxSim << ", maxStep: " << maxStep << ", sampleFreq: " << sampleFreq << ", convFreq: " << convFreq << ", storeFreq: " << storeFreq << endl;
+	logFile << "P: "<< pSlice << ", N: "<< nPart << ", Beta: " << beta << ", Internals: " << internalCoords << ", levyNum: " << levyNum << ", levyModes: " << levyModes << "\n" << "initLen: " << initLen << ", autoCorrLen: " << autoCorrLen << ", errorThresh: " << errorThresh << ", storeNum: " << storeNum << endl;
         if(physicsParams->lowFrozModes+physicsParams->highFrozModes>0) {
             logFile << "Frozen Modes:" << endl;
         }
@@ -469,8 +520,9 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
             }
         }
         logFile << endl;
+        logFile << "Harmonic Energy is: " << sys->GetHarmonicE() << endl;
         if(!coords->readGeom) {
-            logFile << "DES: Coords after opt" << endl;
+            logFile << "Coords after opt" << endl;
             for(int j=0; j<coords->numPart; j++) {
                for(int k=0; k<3; k++) {
                   logFile << coords->initCart[j][k] << "\t";
@@ -544,74 +596,119 @@ void Simulation::Revert(){
 }
 
 void Simulation::Sample(){
-        if(stepNum < sampleStart) {
-            if(numTI==0) {
+/*
+         if(stepNum%1000==0) {
+            cout << "DES: Step " << stepNum << endl;
+         }
+*/
+        if(numTI==0) {
 // If not TI use E
-               autoCorr.AddVal(sys->EstimatorE());
+           autoCorr.AddVal(sys->EstimatorE());
+        }
+        else {
+           autoCorr.AddVal(sys->EstimatorV());
+        }
+        if(stepNum == (sampleStart) && autoCorrLen>0) {
+            //sampleFreq = int(autoCorr.GetTau()*2+1);
+            tau = autoCorr.GetTau();
+            sampleFreq = 1;
+            //cout << "DES: Working out sampling" << endl;
+            //cout << "HarmoincE = " << sys->GetHarmonicE() << endl;
+            if(numTI < 1 ) {
+               numSamples = int(autoCorr.GetTotalVariance()/pow(((autoCorr.GetTotalMean()-sys->GetHarmonicE())*errorThresh),2)*(2*tau)*1.96*1.96);
             }
             else {
-               autoCorr.AddVal(sys->EstimatorV());
+               numSamples = int(autoCorr.GetTotalVariance()/pow((autoCorr.GetTotalMean()*errorThresh),2)*(2*tau)*1.96*1.96);
             }
-        }
-        if(stepNum == sampleStart/5) {
-            autoCorr.Reset();
-        }
-        if(stepNum == sampleStart) {
-            autoCorr.GetTau();
-//            vector<double> corrFunc = autoCorr.GetCorr();
-//            for(int i=0; i< corrFunc.size(); i++) {
-//               cout << i << "\t" << corrFunc[i] << endl;
+            if(maxStep != sampleStart+1) {
+               numSamples = min(numSamples,maxStep);
+               if(numSamples == maxStep) {
+                  cout << "Error: required number of steps > maxStep. Continuing for " << maxStep << " steps." << endl;
+               }
+            }
+            if(storeNum>0) {
+               storeFreq = int(numSamples/storeNum);
+            }
+//            if(maxStep == sampleStart) {
+//               maxStep = sampleStart + numSamples*sampleFreq;
 //            }
-//            exit(-1);
+//            else {
+//               maxStep = sampleStart + min(numSamples*sampleFreq,maxStep);
+//            }
+            if(maxStep == sampleStart+1) {
+               maxStep = initLen + numSamples;
+            }
+            else {
+               maxStep = sampleStart + min(numSamples-autoCorrLen,maxStep);
+            }
+// Setting numSamples to the number of remaining samples here
+            numSamples = max(0,numSamples-autoCorrLen);
+            time_t t = time(0);
+            struct tm * current = localtime( & t );
+            logFile << "****Error Estimation****" << endl;
+            if(numTI < 1 ) {
+               logFile << "Tau: " << tau << ", Approx. Mean: " << autoCorr.GetTotalMean()-sys->GetHarmonicE() << ", Approx. St. Dev.: " << autoCorr.GetTotalStDev() << endl;
+            }
+            else {
+               logFile << "Tau: " << tau << ", Approx. Mean: " << autoCorr.GetTotalMean() << ", Approx. St. Dev.: " << autoCorr.GetTotalStDev() << endl;
+            }
+               logFile << "numSamples: " << numSamples+autoCorrLen << ", maxStep: " << maxStep << ", sampleFreq: " << sampleFreq << endl;
+            logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
+            logFile << "************************" << endl;
+//            cout << "DES: tau = " << tau << endl;
+//            cout << "DES: storeNum = " << storeNum << endl;
+//            cout << "DES: sampleFreq = " << sampleFreq << endl;
+//            cout << "DES: numSamples = " << numSamples << endl;
+//            cout << "DES: storeFreq = " << storeFreq << endl;
+//            cout << "DES: temp sampleStart = " << sampleStart << endl;
+//            cout << "DES: final maxStep = " << maxStep << endl;
+
+            //exit(-1);
         }
+/*
 	if((stepNum > sampleStart)&&(stepNum%convFreq==0)){
 		convergenceStats->AddVal(sys->EstimatorE());
 //		cout << "Energy: " << sys->EstimatorE() << endl;
 	}
+*/
 // DES TODO: Don't estimate E if doing TI
-	if((stepNum > sampleStart)&&(stepNum%sampleFreq==0)) {
-		energyStats->AddVal(sys->EstimatorE());
-                if(!sys->GetPhysics()->isDeltaAI()) {
-		    potentialStats->AddVal(sys->EstimatorV());
-                }
-                else {
-                    double tempV = sys->EstimatorV();
-                    potentialStats->AddVal(tempV);
-//                    vFile << tempNum << "\t" << tempV << endl;
-//                    tempNum++;
-                }
-//		comboStats->AddVal(sys->EstimatorV()*sys->EstimatorE());
-		vector< vector<Particle>  > part = sys->GetParticle();
-/* xstats
-                double tempX = 0.0;
-		for(int i=0; i<(int)part.size(); i++) {
-			for(int j=0; j<(int)part[0].size(); j++) {
-                                tempX += part[i][j].pos[0];
-				//xStats->AddVal(part[i][j].pos[0]-part[(i+1)%part.size()][j].pos[0]);
-			}
-		}
-	        xStats->AddVal(tempX/part.size()/part[0].size());
-*/
-// To restore function uncomment posFile above
-//		if((stepNum-sampleStart)/(double)sampleFreq < 5000) {
-//			WritePosToFile();
-//		}
-	}
-}
-
-//TODO:  Delete this
-void Simulation::FinalPrint() {
-	logFile << " ****Simulation Finished****" << endl;
-/*
-	cout << "Mean Energy: " << energyStats->GetMean() << endl;
-	cout << "Energy Convergence: " << convergenceStats->GetStDev() << endl;
-	cout << "Percent Convergence: " << convergenceStats->GetStDev()/convergenceStats->GetMeanAbs()*100.0 << endl;
-	cout << "Mean Potential: " << potentialStats->GetMean() << endl;
-	cout << "Mean X Position: " << xStats->GetMean() << endl;
-	cout << "RMS X Position: " << xStats->GetRMS() << endl;
-	cout << "Acceptance probability: " << acceptanceStats->GetMean() << endl;
-*/
-         Log();
+        if(autoCorrLen <=0) {
+           if((stepNum >= sampleStart)&&((stepNum-sampleStart)%sampleFreq==0)) {
+                   energyStats->AddVal(sys->EstimatorE());
+                   if(!sys->GetPhysics()->isDeltaAI()) {
+                       potentialStats->AddVal(sys->EstimatorV());
+                   }
+                   else {
+                       double tempV = sys->EstimatorV();
+                       potentialStats->AddVal(tempV);
+   //                    vFile << tempNum << "\t" << tempV << endl;
+   //                    tempNum++;
+                   }
+   //		comboStats->AddVal(sys->EstimatorV()*sys->EstimatorE());
+                   vector< vector<Particle>  > part = sys->GetParticle();
+   /* xstats
+                   double tempX = 0.0;
+                   for(int i=0; i<(int)part.size(); i++) {
+                           for(int j=0; j<(int)part[0].size(); j++) {
+                                   tempX += part[i][j].pos[0];
+                                   //xStats->AddVal(part[i][j].pos[0]-part[(i+1)%part.size()][j].pos[0]);
+                           }
+                   }
+                   xStats->AddVal(tempX/part.size()/part[0].size());
+   */
+   // To restore function uncomment posFile above
+   //		if((stepNum-sampleStart)/(double)sampleFreq < 5000) {
+   //			WritePosToFile();
+   //		}
+           }
+        }
+ //       if(stepNum == initLen || stepNum == sampleStart) {
+ //           autoCorr.Reset();
+ //       }
+        if(stepNum == initLen) {
+            autoCorr.Reset();
+            acceptanceStats->Reset();
+        }
 }
 
 void Simulation::WritePosToFile() {
@@ -639,16 +736,37 @@ void Simulation::WritePosToFile() {
 }
 
 void Simulation::Log() {
-	time_t t = time(0);
-	struct tm * current = localtime( & t );
-	logFile << "Mean Energy: " << energyStats->GetMean() << endl;
-	logFile << "Energy Convergence: " << convergenceStats->GetStDev() << endl;
-	logFile << "Mean Potential: " << potentialStats->GetMean() << endl;
-	logFile << "Potential Convergence: " << potentialStats->GetStDev() << endl;
-//	logFile << "Mean X Position: " << xStats->GetMean() << endl;
-//	logFile << "RMS X Position: " << xStats->GetRMS() << endl;
-	logFile << "Acceptance probability: " << acceptanceStats->GetMean() << endl;
-	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
+   time_t t = time(0);
+   struct tm * current = localtime( & t );
+   if(numTI <= 0) {
+      if(autoCorrLen > 0) {
+         logFile << "Mean Free Energy: " << autoCorr.GetTotalMean() - sys->GetHarmonicE() << endl;
+         logFile << "Energy St. Dev.: " << autoCorr.GetTotalStDev() << endl;
+         if(stepNum == maxStep) {
+            logFile << "95% Confidence Bounds: " << autoCorr.GetTotalStDev()/sqrt(double(numSamples+autoCorrLen))*sqrt(tau*2)*1.96 << endl;
+         }
+      }
+      else {
+         logFile << "Mean Energy: " << energyStats->GetMean() << endl;
+         logFile << "Energy St. Dev.: " << energyStats->GetStDev() << endl;
+         logFile << "Mean Potential: " << potentialStats->GetMean() << endl;
+         logFile << "Potential St. Dev.: " << potentialStats->GetStDev() << endl;
+      }
+   }
+   else {
+      if(autoCorrLen > 0) {
+         logFile << "Mean Potential: " << autoCorr.GetTotalMean() << endl;
+         logFile << "Potential St. Dev.: " << autoCorr.GetTotalStDev() << endl;
+      }
+      else {
+         logFile << "Mean Potential: " << potentialStats->GetMean() << endl;
+         logFile << "Potential St. Dev.: " << potentialStats->GetStDev() << endl;
+      }
+   }
+   //	logFile << "Mean X Position: " << xStats->GetMean() << endl;
+   //	logFile << "RMS X Position: " << xStats->GetRMS() << endl;
+   logFile << "Acceptance probability: " << acceptanceStats->GetMean() << endl;
+   logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
 }
 
 void Simulation::FinalLog() {
@@ -662,150 +780,152 @@ void Simulation::FinalLog() {
 	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
 }
 
-void Simulation::TILog(double dG, double dGVar) {
+void Simulation::TILog(double dG, double dGstdev) {
 	time_t t = time(0);
 	struct tm * current = localtime( & t );
         logFile << "****** " << numTI << " TI Points Finished ******" << endl;
 	logFile << "Free Energy: " << dG << endl;
-	logFile << "Standard Deviation: " << dGVar << endl;
+	logFile << "Standard Deviation: " << dGstdev << endl;
+        if(autoCorrLen > 0) {
+	    logFile << "95% Confidence Bounds: " << dGstdev/sqrt(double(numSamples+autoCorrLen))*sqrt(tau*2)*1.96 << endl;
+        }
 	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
 }
 
 void Simulation::Store() {
-	time_t t = time(0);
-	struct tm * current = localtime( & t );
-	logFile << "Mean Energy: " << energyStats->GetMean() << endl;
-	logFile << "Energy Convergence: " << convergenceStats->GetStDev() << endl;
-	logFile << "Mean Potential: " << potentialStats->GetMean() << endl;
-	logFile << "Acceptance probability: " << acceptanceStats->GetMean() << endl;
-	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
+   if (storeFreq!=0 && (stepNum > sampleStart) && (stepNum-sampleStart+1)%storeFreq==0){
+//      time_t t = time(0);
+//      struct tm * current = localtime( & t );
+//      logFile << "Mean Energy: " << energyStats->GetMean() << endl;
+//      logFile << "Energy Convergence: " << convergenceStats->GetStDev() << endl;
+//      logFile << "Mean Potential: " << potentialStats->GetMean() << endl;
+//      logFile << "Acceptance probability: " << acceptanceStats->GetMean() << endl;
+//      logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
+      Log();
+   }
 }
 
 
-void Simulation::Run(){
-    if(numTI==0){
+void Simulation::Run() {
+   if(numTI==0){
       for(int simNum = 0; simNum<maxSim; simNum++) {
-           for(stepNum=0; stepNum<maxStep; stepNum++){
-                   TakeStep();
-                   if (Check()) {
-                           Update();
-                   } else {
-                           Revert();
-                   }
-                   Sample();
-                   if (storeFreq!=0 && (stepNum+1)%storeFreq==0){					//Write statistics to the log.txt file every storeFreq step
-                           Store();
-                   }
-           }
-           if(maxSim==1) {
-//               FinalPrint();
-	       logFile << " ****Simulation Finished****" << endl;
-           }
-           else {
-               logFile << "****** Finished Simulation " << simNum << " ******" << endl;
-           }
-           Log();
-           simStats->AddVal(energyStats->GetMean());
-           simPotStats->AddVal(potentialStats->GetMean());
+         for(stepNum=0; stepNum<maxStep; stepNum++){
+            TakeStep();
+            if (Check()) {
+               Update();
+            } else {
+               Revert();
+            }
+            Sample();
+//                   if (storeFreq!=0 && (stepNum+1)%storeFreq==0 && (stepNum > (sampleStart))){
+//                           Store();		//Write statistics to the log.txt file every storeFreq step
+//                   }
+            Store();
+         }
+         if(maxSim==1) {
+            if(autoCorrLen > 0) {
+               logFile << "****Final Tau****" << endl;
+               tau = autoCorr.GetTau();
+               logFile << "Tau: " << tau << "\t numSamples: " << numSamples + autoCorrLen << endl;
+            }
+            logFile << " ****Simulation Finished****" << endl;
+         }
+         else {
+            logFile << "****** Finished Simulation " << simNum << " ******" << endl;
+         }
+         Log();
+         simStats->AddVal(energyStats->GetMean());
+         simPotStats->AddVal(potentialStats->GetMean());
 //           simComboStats->AddVal(comboStats->GetMean());
-           sys->Reset();
-           energyStats->Reset();
-           potentialStats->Reset();
+         sys->Reset();
+         energyStats->Reset();
+         potentialStats->Reset();
 //           comboStats->Reset();
       }
       if(maxSim>1) {
          FinalLog();
       }
-    }
+   }
 // Running thermodynamic integration
-    else {
-        vector<double> gPoints;
-        vector<double> gWeights;
-        if(numTI==11) {
-            GetLinearQuad(numTI,gPoints,gWeights);
-        }
-        else {
-            GetGaussianQuad(numTI,gPoints,gWeights);
-        }
-        double energyPoints = 0.0;          //TODO: Remove this
-        double energyStDevPoints = 0.0;     //TODO: Remove this
-        double potentialPoints = 0.0;
-        double potentialStDevPoints = 0.0;
-        for(int pLam=0; pLam<numTI; pLam++) {
+   else {
+      vector<double> gPoints;
+      vector<double> gWeights;
+      if(numTI==11) {
+         GetLinearQuad(numTI,gPoints,gWeights);
+      }
+      else {
+         GetGaussianQuad(numTI,gPoints,gWeights);
+      }
+//        double energyPoints = 0.0;          //TODO: Remove this
+//        double energyStDevPoints = 0.0;     //TODO: Remove this
+      double potentialPoints = 0.0;
+      double potentialStDevPoints = 0.0;
+      for(int pLam=0; pLam<numTI; pLam++) {
 //      Set the lambda value remembering to convert from [-1,1] range to [0,1] range
-            sys->GetPhysics()->lambdaTI=0.5*(gPoints[pLam]+1);
-            for(int simNum = 0; simNum<maxSim; simNum++) {
-               for(stepNum=0; stepNum<maxStep; stepNum++){
-                       TakeStep();
-                       if (Check()) {
-                               Update();
-                       } else {
-                               Revert();
-                       }
-                       Sample();
-                       if (storeFreq!=0 && (stepNum+1)%storeFreq==0){					//Write statistics to the log.txt file every storeFreq step
-                               Store();
-                       }
+         sys->GetPhysics()->lambdaTI=0.5*(gPoints[pLam]+1);
+         for(int simNum = 0; simNum<maxSim; simNum++) {
+            for(stepNum=0; stepNum<maxStep; stepNum++) {
+               TakeStep();
+               if (Check()) {
+                  Update();
+               } else {
+                  Revert();
                }
-               if(maxSim==1) {
-//                   FinalPrint();
-	          logFile << " ****Simulation Finished****" << endl;
+               Sample();
+//                       if (storeFreq!=0 && (stepNum+1)%storeFreq==0 && (stepNum > (sampleStart))){
+//                            Store();		//Write statistics to the log.txt file every storeFreq step
+//                       }
+               Store();		//Write statistics to the log.txt file every storeFreq step
+            }
+            if(maxSim==1) {
+               logFile << " ****Simulation Finished****" << endl;
+            }
+            else {
+               logFile << "****** Finished Simulation " << simNum << " ******" << endl;
+            }
+            Log();
+            if(maxSim==1) {
+               if(autoCorrLen > 0) {
+                  potentialPoints += autoCorr.GetTotalMean() * 0.5 * gWeights[pLam];
+                  potentialStDevPoints += autoCorr.GetTotalStDev() * 0.5 * gWeights[pLam];
                }
                else {
-                   logFile << "****** Finished Simulation " << simNum << " ******" << endl;
+                  potentialPoints += potentialStats->GetMean() * 0.5 * gWeights[pLam];
+                  potentialStDevPoints += potentialStats->GetStDev() * 0.5 * gWeights[pLam];
                }
-               Log();
+            }
+            else {
                simStats->AddVal(energyStats->GetMean());
                simPotStats->AddVal(potentialStats->GetMean());
-//  DES Note:   Adding multiplication by 2 lambda here rather than during simulation
-//              potentialStats has no clue that we're running TI
-//               simPotStats->AddVal(potentialStats->GetMean()*2*sys->GetPhysics()->lambdaTI);
-//               simComboStats->AddVal(comboStats->GetMean());
-               sys->Reset();
-               energyStats->Reset();
-               potentialStats->Reset();
+            }
+            sys->Reset();
+            energyStats->Reset();
+            potentialStats->Reset();
 //               comboStats->Reset();
-            }
-            logFile << "Run with lambda = " << sys->GetPhysics()->lambdaTI << endl;
-            if(maxSim>1) {
-                FinalLog();
-            }
-            energyPoints += simStats->GetMean() * 0.5 * gWeights[pLam];
-            energyStDevPoints += simStats->GetStDev() * 0.5 * gWeights[pLam];
+         }
+         logFile << "Run with lambda = " << sys->GetPhysics()->lambdaTI << endl;
+         if(maxSim>1) {
+            FinalLog();
             potentialPoints += simPotStats->GetMean() * 0.5 * gWeights[pLam];
             potentialStDevPoints += simPotStats->GetStDev() * 0.5 * gWeights[pLam];
             simStats->Reset();
             simPotStats->Reset();
+         }
+//            energyPoints += simStats->GetMean() * 0.5 * gWeights[pLam];
+//            energyStDevPoints += simStats->GetStDev() * 0.5 * gWeights[pLam];
 //            simComboStats->Reset();
-        }
-        TILog(potentialPoints, potentialStDevPoints);
-    }
+      }
+      if(autoCorrLen > 0) {
+         logFile << "****Final Tau****" << endl;
+         tau = autoCorr.GetTau();
+         logFile << "Tau: " << tau << "\t numSamples: " << numSamples + autoCorrLen << endl;
+      }
+      TILog(potentialPoints, potentialStDevPoints);
+   }
 }
 
 
 
-
-
-
-
-//	Utility function stolen from http://www.oopweb.com/CPP/Documents/CPPHOWTO/Volume/C++Programming-HOWTO-7.html
-void Simulation::Tokenize(const string& str, vector<string>& tokens, const string& delimiters)
-{
-    // Skip delimiters at beginning.
-    string::size_type lastPos = str.find_first_not_of(delimiters, 0);
-    // Find first "non-delimiter".
-    string::size_type pos     = str.find_first_of(delimiters, lastPos);
-
-    while (string::npos != pos || string::npos != lastPos)
-    {
-        // Found a token, add it to the vector.
-        tokens.push_back(str.substr(lastPos, pos - lastPos));
-        // Skip delimiters.  Note the "not_of"
-        lastPos = str.find_first_not_of(delimiters, pos);
-        // Find next "non-delimiter"
-        pos = str.find_first_of(delimiters, lastPos);
-    }
-}
 
 // For given number of points, nti, return points and weight for numerical integration
 // using Gauss-Legendre quadrature http://en.wikipedia.org/wiki/Gaussian_quadrature.
@@ -951,5 +1071,25 @@ void Simulation::GetLinearQuad(int nti, vector<double>& points, vector<double>& 
         weights.push_back(2.0/11.0);
         points.push_back(1.0);
         weights.push_back(1.0/11.0);
+    }
+}
+
+
+//	Utility function stolen from http://www.oopweb.com/CPP/Documents/CPPHOWTO/Volume/C++Programming-HOWTO-7.html
+void Simulation::Tokenize(const string& str, vector<string>& tokens, const string& delimiters)
+{
+    // Skip delimiters at beginning.
+    string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+    // Find first "non-delimiter".
+    string::size_type pos     = str.find_first_of(delimiters, lastPos);
+
+    while (string::npos != pos || string::npos != lastPos)
+    {
+        // Found a token, add it to the vector.
+        tokens.push_back(str.substr(lastPos, pos - lastPos));
+        // Skip delimiters.  Note the "not_of"
+        lastPos = str.find_first_not_of(delimiters, pos);
+        // Find next "non-delimiter"
+        pos = str.find_first_of(delimiters, lastPos);
     }
 }

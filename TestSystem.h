@@ -42,10 +42,11 @@ public:
 	void Forget();
 	void Undo();
 	void Reset();
-	double GetWeight();
 	double EstimatorV();
 	double EstimatorE();
+	double GetWeight();
 	double GetOldWeight();
+	double GetHarmonicE();
 	vector< vector<Particle> > GetParticle();
 	string GetVType();
 	string GetRhoType();
@@ -66,6 +67,7 @@ public:
 	double potE;		//Warning: this is the sum of V over all the beads (needs to be divided by P to calc avg)
 	double oldPotE;
 	double avgV;
+        double harmonicE;
 	int numSteps;
 	Potential * V;
 	Potential * V2;

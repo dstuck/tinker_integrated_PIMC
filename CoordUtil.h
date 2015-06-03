@@ -28,6 +28,7 @@ public:
 	vector< vector<double> > normalModeToCart(vector<Particle>);
 	vector< vector<double> > normalModeToCart(vector<double>);      //Inefficient, for debug
 	vector<double> cartToNormalMode(vector< vector<double> >);
+        double GetHarmV(vector<Particle>);      //TODO: Make this vector position...
         void MatchModes(CoordUtil*);
         void MakeScalingVec(CoordUtil*);
         void initMass();
@@ -54,11 +55,12 @@ public:
 	vector< vector<double> > initCart;
 	vector< vector<double> > guessCarts;
 	vector<Particle> guessPart;
-	vector< vector< vector<double> > > normModes;    //TODO: remove this in favor of armaModes
+	vector< vector< vector<double> > > normModes;    //TODO: remove this in favor of armaNormModes
       arma::vec scalingVec;
       arma::vec atomMass;
+      arma::vec armaInitCart;
       arma::mat fragExtraB;
-      arma::mat internalModes;
+      arma::mat armaNormModes;
       arma::mat armaInvModes;
       arma::mat sqrtInvMass;  //TODO: Don't really need this as class data
       //arma::mat equibBInv;

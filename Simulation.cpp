@@ -26,6 +26,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 // DES Temp:
 //        tempNum = 0;
         maxSim = 1;
+        epsInit = -1.0;
         bool readOmega = false;
         bool readGeom = false;
         bool internalCoords = false;
@@ -47,15 +48,20 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 //	int a = 1;	// Atomic number
 	levyNum = 30;
         levyModes = 0;
+	levyNumInit = -1;
+        levyModesInit = -1;
         numTI = 0;
+        numGeomPrint = 0;
         errorThresh = 0.05;
         tau = -1.0;
         storeNum = -1;
         maxStep = -1;
         sampleStart = -1;
         initLen = -1;
-        autoCorrLen = 40000;
+        autoCorrLen = 20000;
+        //autoCorrLen = -1;
         sampleFreq = 1;
+        noEnergy = false;
 	vector<double> mass;
 	vector<string> atomType;
 	vector<int> paramType;
@@ -153,10 +159,20 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 						storeNum = atoi(lineTokens[1].c_str());
 					}
 					else if(lineTokens[0].find("errorThresh") != std::string::npos) {
-						errorThresh = double(atoi(lineTokens[1].c_str()))/10000.0;
+						errorThresh = atof(lineTokens[1].c_str())/100.0;
 					}
 					else if(lineTokens[0].find("beta") != std::string::npos) {
 						beta = atof(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("temperature") != std::string::npos) {
+// Atomic temperature units from http://en.wikipedia.org/wiki/Atomic_units 4/18/15
+						beta = 315774.65/atof(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("tempInit") != std::string::npos) {
+						epsInit = 315774.65/atof(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("initTemp") != std::string::npos) {
+						epsInit = 315774.65/atof(lineTokens[1].c_str());
 					}
 	//				TODO: merge nPart read with $molecule section
 					else if(lineTokens[0].find("nPart") != std::string::npos) {
@@ -166,10 +182,20 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 						pSlice = atoi(lineTokens[1].c_str());
 					}
 					else if(lineTokens[0].find("levyNum") != std::string::npos) {
+                                           if(lineTokens[0].find("levyNumInit") != std::string::npos) {
+                                                levyNumInit = atoi(lineTokens[1].c_str());
+                                           }
+                                           else {
 						levyNum = atoi(lineTokens[1].c_str());
+                                           }
 					}
 					else if(lineTokens[0].find("levyModes") != std::string::npos) {
+                                           if(lineTokens[0].find("levyModesInit") != std::string::npos) {
+                                                levyModesInit = atoi(lineTokens[1].c_str());
+                                           }
+                                           else {
 						levyModes = atoi(lineTokens[1].c_str());
+                                           }
 					}
 					else if(lineTokens[0].find("levyInit") != std::string::npos) {
 						physicsParams->numInit = atoi(lineTokens[1].c_str());
@@ -186,6 +212,12 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 					else if(lineTokens[0].find("morseAlpha") != std::string::npos) {
 						physicsParams->morseAlpha = atof(lineTokens[1].c_str());
 					}
+					else if(lineTokens[0].find("morseMass") != std::string::npos) {
+						physicsParams->morseMass = atof(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("freqCutoff") != std::string::npos) {
+						physicsParams->freqCutoff = atof(lineTokens[1].c_str())*0.00000455633;
+					}
 					else if(lineTokens[0].find("numFrozModes") != std::string::npos) {
 						physicsParams->lowFrozModes = atof(lineTokens[1].c_str());
 					}
@@ -198,6 +230,9 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 					else if(lineTokens[0].find("numTI") != std::string::npos) {
 					        numTI=atoi(lineTokens[1].c_str());
 					}
+					else if(lineTokens[0].find("numGeomPrint") != std::string::npos) {
+					        numGeomPrint=atoi(lineTokens[1].c_str());
+					}
 					else if(lineTokens[0].find("charge") != std::string::npos) {
 						physicsParams->charge = atoi(lineTokens[1].c_str());
 					}
@@ -207,6 +242,11 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 					else if(lineTokens[0].find("deltaAI") != std::string::npos) {
                                             if(atof(lineTokens[1].c_str())>0) {
                                                 physicsParams->deltaAbInit = true;
+                                            }
+					}
+					else if(lineTokens[0].find("noEnergy") != std::string::npos) {
+                                            if(atof(lineTokens[1].c_str())>0) {
+                                                noEnergy = true;
                                             }
 					}
 					else if(lineTokens[0].find("readGeom") != std::string::npos) {
@@ -374,13 +414,14 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
             exit(-1);
          }
       }
-      if(autoCorrLen >= 0) {
+      if(autoCorrLen > 0) {
          sampleStart = initLen + autoCorrLen;
       }
       else {
          sampleStart = initLen;
+         numSamples = maxStep - initLen;
       }
-//      cout << "DES: sampleStart = " << sampleStart << endl;
+// For autocorrelation based jobs, we don't know maxStep yet so set it after init
       maxStep = max(maxStep,sampleStart+1);
 // )
 
@@ -397,6 +438,15 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 		cout << "connectivity dim = " << connectivity.size() << " but nPart = " << nPart << endl;
 		exit (-1);
         }
+//DES Temp
+//      cout << "DES: connectivity" << endl;
+//      for(int i=0; i<connectivity.size(); i++) {
+//         for(int j=0; j< connectivity[i].size(); j++) {
+//            cout << connectivity[i][j] << "\t";
+//         }
+//         cout << endl;
+//      }
+//      exit(-1);
 	if(nPart==2) {
 		nMode = 1;		//Linear case!
 	}
@@ -410,6 +460,13 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
       }
       else if(levyModes>nMode - (physicsParams->lowFrozModes+physicsParams->highFrozModes)) {
          cout << "Error: Total modes moved > number of modes!" << endl;
+         exit(-1);
+      }
+      if(levyModesInit==0) {
+         levyModesInit = nMode - (physicsParams->lowFrozModes+physicsParams->highFrozModes);
+      }
+      else if(levyModesInit>nMode - (physicsParams->lowFrozModes+physicsParams->highFrozModes)) {
+         cout << "Error: Total modes moved in initialization > number of modes!" << endl;
          exit(-1);
       }
       if(physicsParams->lowFrozModes+physicsParams->highFrozModes > nMode) {
@@ -443,8 +500,18 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 		numTI=1;
                cout << "DES: Setting numTI to 1 for deltaAI" << endl;
 	}
-	string outName = logFileName.substr(0, logFileName.find_first_of("."));
-	epsTemp = beta/((double)pSlice);
+	outName = logFileName.substr(0, logFileName.find_first_of("."));
+	epsilon = beta/((double)pSlice);
+        if(epsInit > 0) {
+	    epsInit /= ((double)pSlice);
+	}
+        if(levyNumInit < 1) {
+	    levyNumInit = levyNum;
+	}
+        if(levyModesInit < 1) {
+	    levyModesInit = levyModes;
+	}
+
 
 //	TODO: Remove this
 //	double eZPE=0;
@@ -493,7 +560,12 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 	logFile << inFileName << endl;
 	logFile << "Potential: " << sys->GetVType() << "\t Propagator: " << sys->GetRhoType() << endl;
 	//logFile << "P: "<< pSlice << ", N: "<< nPart << ", Beta: " << beta << ", levyModes: " << levyModes << ", levyNum: " << levyNum << "\n" << "maxSim: " << maxSim << ", maxStep: " << maxStep << ", sampleFreq: " << sampleFreq << ", convFreq: " << convFreq << ", storeFreq: " << storeFreq << endl;
-	logFile << "P: "<< pSlice << ", N: "<< nPart << ", Beta: " << beta << ", Internals: " << internalCoords << ", levyNum: " << levyNum << ", levyModes: " << levyModes << "\n" << "initLen: " << initLen << ", autoCorrLen: " << autoCorrLen << ", errorThresh: " << errorThresh << ", storeNum: " << storeNum << endl;
+	logFile << "P: "<< pSlice << ", N: "<< nPart << ", Beta: " << beta << ", Internals: " << internalCoords << ", levyNum: " << levyNum << ", levyModes: " << levyModes << "\n" << "initLen: " << initLen << ", autoCorrLen: " << autoCorrLen << ", errorThresh: " << errorThresh << ", storeNum: " << storeNum;
+        if(autoCorrLen > 0) {
+            logFile << endl;
+        } else {
+            logFile << ", maxStep: " << maxStep << endl;
+        }
         if(physicsParams->lowFrozModes+physicsParams->highFrozModes>0) {
             logFile << "Frozen Modes:" << endl;
         }
@@ -520,7 +592,6 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
             }
         }
         logFile << endl;
-        logFile << "Harmonic Energy is: " << sys->GetHarmonicE() << endl;
         if(!coords->readGeom) {
             logFile << "Coords after opt" << endl;
             for(int j=0; j<coords->numPart; j++) {
@@ -530,6 +601,7 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
                logFile << endl;
             }
         }
+        logFile << "Harmonic Energy is: " << sys->GetHarmonicE() << endl;
 
 //	srand(time(NULL));
 	idum = new int;
@@ -562,17 +634,25 @@ void Simulation::TakeStep(){
 //	x.push_back(RandomNum::rangau(0,1,idum));
 //	for(int n = 0; n < 4; n++){
 //	for(int n = 0; n < 3+levyModes; n++){
-	for(int n = 0; n < levyModes+1; n++){
-		x.push_back(RandomNum::rand3(idum));
+        if(epsInit>0 && stepNum < initLen) {
+           for(int n = 0; n < levyModesInit+1; n++){
+                   x.push_back(RandomNum::rand3(idum));
+           }
+	    sys->Move(x, epsInit, levyNumInit, levyModesInit);
 	}
-	sys->Move(x, levyNum, levyModes);
+        else {
+           for(int n = 0; n < levyModes+1; n++){
+                   x.push_back(RandomNum::rand3(idum));
+           }
+	    sys->Move(x, epsilon, levyNum, levyModes);
+	}
 }
 
-bool Simulation::Check(){
+bool Simulation::Check(double epsVal){
 //	double pTest = ((double)rand()/(double)RAND_MAX);
 	double pTest = (RandomNum::rand3(idum));
 //	cout<<"Weight: " << sys->GetWeight() << endl;
-	double checkVal = exp(-epsTemp*(sys->GetWeight() - sys->GetOldWeight()));
+	double checkVal = exp(-epsVal*(sys->GetWeight() - sys->GetOldWeight()));
 //	double checkVal = 1.0;
 //	cout << "V diff\t" << sys->GetWeight() - sys->GetOldWeight() << endl;
 	if (checkVal > pTest) {
@@ -587,28 +667,38 @@ bool Simulation::Check(){
 	}
 }
 
-void Simulation::Update(){
+void Simulation::Update() {
 	sys->Forget();
 }
 
-void Simulation::Revert(){
+void Simulation::Revert() {
 	sys->Undo();
 }
 
-void Simulation::Sample(){
-/*
-         if(stepNum%1000==0) {
-            cout << "DES: Step " << stepNum << endl;
-         }
-*/
+void Simulation::Sample() {
         if(numTI==0) {
 // If not TI use E
-           autoCorr.AddVal(sys->EstimatorE());
+           if(!noEnergy){
+               autoCorr.AddVal(sys->EstimatorE());
+           }
+           else{
+               autoCorr.AddVal(0.0);
+           }
         }
         else {
-           autoCorr.AddVal(sys->EstimatorV());
+           autoCorr.AddVal(sys->EstimatorAnharmonicV());
         }
-        if(stepNum == (sampleStart) && autoCorrLen>0) {
+        if(stepNum == initLen) {
+            autoCorr.Reset();
+            acceptanceStats->Reset();
+            if(autoCorrLen <= 0) {
+               if(storeNum>0) {
+                  storeFreq = int((maxStep-initLen)/storeNum);
+               }
+            }
+        }
+// Estimate remaining steps once autocorrelation estimated
+        if(stepNum == sampleStart && autoCorrLen>0) {
             //sampleFreq = int(autoCorr.GetTau()*2+1);
             tau = autoCorr.GetTau();
             sampleFreq = 1;
@@ -655,36 +745,27 @@ void Simulation::Sample(){
                logFile << "numSamples: " << numSamples+autoCorrLen << ", maxStep: " << maxStep << ", sampleFreq: " << sampleFreq << endl;
             logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
             logFile << "************************" << endl;
-//            cout << "DES: tau = " << tau << endl;
-//            cout << "DES: storeNum = " << storeNum << endl;
-//            cout << "DES: sampleFreq = " << sampleFreq << endl;
-//            cout << "DES: numSamples = " << numSamples << endl;
-//            cout << "DES: storeFreq = " << storeFreq << endl;
-//            cout << "DES: temp sampleStart = " << sampleStart << endl;
-//            cout << "DES: final maxStep = " << maxStep << endl;
-
-            //exit(-1);
         }
-/*
-	if((stepNum > sampleStart)&&(stepNum%convFreq==0)){
-		convergenceStats->AddVal(sys->EstimatorE());
-//		cout << "Energy: " << sys->EstimatorE() << endl;
-	}
-*/
 // DES TODO: Don't estimate E if doing TI
         if(autoCorrLen <=0) {
            if((stepNum >= sampleStart)&&((stepNum-sampleStart)%sampleFreq==0)) {
-                   energyStats->AddVal(sys->EstimatorE());
+                   //cout << "Sampling Step = " << (stepNum-sampleStart) << endl;
+                   //energyStats->AddVal(sys->EstimatorE());
+                   if(!noEnergy){
+                       energyStats->AddVal(sys->EstimatorE());
+                   }
+                   else{
+                       energyStats->AddVal(0.0);
+                   }
                    if(!sys->GetPhysics()->isDeltaAI()) {
-                       potentialStats->AddVal(sys->EstimatorV());
+                       potentialStats->AddVal(sys->EstimatorAnharmonicV());
                    }
                    else {
-                       double tempV = sys->EstimatorV();
+                       double tempV = sys->EstimatorAnharmonicV();
                        potentialStats->AddVal(tempV);
    //                    vFile << tempNum << "\t" << tempV << endl;
    //                    tempNum++;
                    }
-   //		comboStats->AddVal(sys->EstimatorV()*sys->EstimatorE());
                    vector< vector<Particle>  > part = sys->GetParticle();
    /* xstats
                    double tempX = 0.0;
@@ -698,41 +779,88 @@ void Simulation::Sample(){
    */
    // To restore function uncomment posFile above
    //		if((stepNum-sampleStart)/(double)sampleFreq < 5000) {
-   //			WritePosToFile();
+   //			WritePathToFile(sys->GetParticle(),posFileName);
    //		}
+           }
+           if(numGeomPrint > 0) {
+              if(stepNum >= sampleStart && (stepNum-sampleStart+1)%((maxStep-sampleStart)/numGeomPrint)==0) {
+                  //cout << "DES: sampling point = " << (maxStemp-sampleStart) << endl;
+/*
+                  vector< vector<Particle>  > tempParts = sys->GetParticle();
+                  vector<Particle> averagePart = tempParts[0];
+                  for(int j=0; j<tempParts[0].size(); j++) {
+                     for(int k=0; k<tempParts[0][0].pos.size(); k++) {
+                        averagePart[j].pos[k] = 0.0;
+                        for(int i=0; i<tempParts.size(); i++) {
+                           averagePart[j].pos[k] += tempParts[i][j].pos[k];
+                        }
+                        averagePart[j].pos[k] /= tempParts.size();
+                     }
+                  }
+*/
+                  ostringstream convert;
+                  convert << int((stepNum-sampleStart+1)/((maxStep-sampleStart)/numGeomPrint));
+                  string geomNum = convert.str();
+                  string partFileName = outName + "." + geomNum + ".xyz";
+                  //WritePartToFile(averagePart,partFileName);
+                  sys->WritePartToFile(partFileName);
+              }
            }
         }
  //       if(stepNum == initLen || stepNum == sampleStart) {
  //           autoCorr.Reset();
  //       }
-        if(stepNum == initLen) {
-            autoCorr.Reset();
-            acceptanceStats->Reset();
-        }
 }
 
-void Simulation::WritePosToFile() {
-	vector< vector<Particle>  > part = sys->GetParticle();
+void Simulation::WritePathToFile(vector< vector<Particle>  > part, string pFileName) {
+	//vector< vector<Particle>  > part = sys->GetParticle();
+        ofstream pFile;
+        pFile.open(pFileName.c_str());
 	if((int)part[0][0].pos.size()>3){
 		cout << "Warning! Turn off write to file if dim > 3!!!!" << endl;
 	}
 	else{
-		posFile << part.size()*part[0].size() << "\n" << endl;
+		pFile << part.size()*part[0].size() << "\n" << endl;
 		for(int i=0; i<(int)part.size(); i++) {
 			for(int j=0; j<(int)part[0].size(); j++) {
-//				posFile << 1 << "\t";
-				posFile << part[i][j].atomType << "\t";
+//				pFile << 1 << "\t";
+				pFile << part[i][j].atomType << "\t";
 				for(int k=0; k<(int)part[0][0].pos.size(); k++) {
-					posFile << part[i][j].pos[k] << "\t";
-	//				cout << part[i][j].pos[k] << endl;
+					pFile << part[i][j].pos[k] << "\t";
 				}
 				for(int k=0; k<(3-(int)part[0][0].pos.size()); k++) {
-					posFile << 0 << "\t";
+					pFile << 0 << "\t";
 				}
-				posFile << endl;
+				pFile << endl;
 			}
 		}
 	}
+        pFile.close();
+}
+
+void Simulation::WritePartToFile(vector<Particle> part, string pFileName) {
+   ofstream pFile;
+   pFile.open(pFileName.c_str());
+   int dim = (int)part[0].pos.size();
+   if(dim>3){
+      cout << "Warning! Turn off write to file if dim > 3!!!!" << endl;
+      exit(-1);
+   }
+   else{
+      pFile << part.size() << "\n" << endl;
+      for(int i=0; i<(int)part.size(); i++) {
+         pFile << part[i].atomType << "\t";
+         for(int k=0; k<dim; k++) {
+            pFile << part[i].pos[k] << "\t";
+         }
+// For printing carts if dim == 2
+         for(int k=0; k<(3-dim); k++) {
+            pFile << 0 << "\t";
+         }
+         pFile << endl;
+      }
+   }
+   pFile.close();
 }
 
 void Simulation::Log() {
@@ -740,9 +868,9 @@ void Simulation::Log() {
    struct tm * current = localtime( & t );
    if(numTI <= 0) {
       if(autoCorrLen > 0) {
-         logFile << "Mean Free Energy: " << autoCorr.GetTotalMean() - sys->GetHarmonicE() << endl;
+         logFile << "Mean Anharmonic Energy: " << autoCorr.GetTotalMean() - sys->GetHarmonicE() << endl;
          logFile << "Energy St. Dev.: " << autoCorr.GetTotalStDev() << endl;
-         if(stepNum == maxStep) {
+         if(stepNum >= maxStep) {
             logFile << "95% Confidence Bounds: " << autoCorr.GetTotalStDev()/sqrt(double(numSamples+autoCorrLen))*sqrt(tau*2)*1.96 << endl;
          }
       }
@@ -757,6 +885,9 @@ void Simulation::Log() {
       if(autoCorrLen > 0) {
          logFile << "Mean Potential: " << autoCorr.GetTotalMean() << endl;
          logFile << "Potential St. Dev.: " << autoCorr.GetTotalStDev() << endl;
+         if(stepNum >= maxStep) {
+            logFile << "95% Confidence Bounds: " << autoCorr.GetTotalStDev()/sqrt(double(numSamples+autoCorrLen))*sqrt(tau*2)*1.96 << endl;
+         }
       }
       else {
          logFile << "Mean Potential: " << potentialStats->GetMean() << endl;
@@ -780,14 +911,15 @@ void Simulation::FinalLog() {
 	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
 }
 
-void Simulation::TILog(double dG, double dGstdev) {
+void Simulation::TILog(double dG, double dGstdev, double taudGstdev) {
 	time_t t = time(0);
 	struct tm * current = localtime( & t );
         logFile << "****** " << numTI << " TI Points Finished ******" << endl;
 	logFile << "Free Energy: " << dG << endl;
 	logFile << "Standard Deviation: " << dGstdev << endl;
-        if(autoCorrLen > 0) {
-	    logFile << "95% Confidence Bounds: " << dGstdev/sqrt(double(numSamples+autoCorrLen))*sqrt(tau*2)*1.96 << endl;
+        if(maxSim == 1) {
+	    logFile << "95% Confidence Bounds: " << taudGstdev/sqrt(double(numSamples+autoCorrLen))*sqrt(2.0)*1.96 << endl;
+	    //logFile << "95% Confidence Bounds: " << dGstdev/sqrt(double(numSamples+autoCorrLen))*sqrt(tau*2)*1.96 << endl;
         }
 	logFile << (current->tm_mon+1) << "/" << (current->tm_mday) << "/" << (current->tm_year+1900) << "  " << current->tm_hour << ":" << current->tm_min << ":" << current->tm_sec << endl;
 }
@@ -807,11 +939,20 @@ void Simulation::Store() {
 
 
 void Simulation::Run() {
-   if(numTI==0){
+   double savedMax = maxStep;
+   if(numTI==0) {
+      double runEps = epsilon;
       for(int simNum = 0; simNum<maxSim; simNum++) {
+         if(epsInit>0) {
+            runEps = epsInit;
+            //cout << "DES Temp: epsInit = " << epsInit << "\t epsilon = " << epsilon << endl;
+         }
          for(stepNum=0; stepNum<maxStep; stepNum++){
+            if(stepNum==initLen) {
+               runEps = epsilon;
+            }
             TakeStep();
-            if (Check()) {
+            if (Check(runEps)) {
                Update();
             } else {
                Revert();
@@ -822,12 +963,10 @@ void Simulation::Run() {
 //                   }
             Store();
          }
+         logFile << "****Final Tau****" << endl;
+         tau = autoCorr.GetTau();
+         logFile << "Tau: " << tau << "\t numSamples: " << numSamples + autoCorrLen << endl;
          if(maxSim==1) {
-            if(autoCorrLen > 0) {
-               logFile << "****Final Tau****" << endl;
-               tau = autoCorr.GetTau();
-               logFile << "Tau: " << tau << "\t numSamples: " << numSamples + autoCorrLen << endl;
-            }
             logFile << " ****Simulation Finished****" << endl;
          }
          else {
@@ -837,7 +976,10 @@ void Simulation::Run() {
          simStats->AddVal(energyStats->GetMean());
          simPotStats->AddVal(potentialStats->GetMean());
 //           simComboStats->AddVal(comboStats->GetMean());
-         sys->Reset();
+         if(maxSim>1) {
+            sys->Reset();
+            maxStep = savedMax;
+         }
          energyStats->Reset();
          potentialStats->Reset();
 //           comboStats->Reset();
@@ -860,13 +1002,22 @@ void Simulation::Run() {
 //        double energyStDevPoints = 0.0;     //TODO: Remove this
       double potentialPoints = 0.0;
       double potentialStDevPoints = 0.0;
+      double tauScaledPoints = 0.0;
       for(int pLam=0; pLam<numTI; pLam++) {
 //      Set the lambda value remembering to convert from [-1,1] range to [0,1] range
          sys->GetPhysics()->lambdaTI=0.5*(gPoints[pLam]+1);
+         double runEps = epsilon;
          for(int simNum = 0; simNum<maxSim; simNum++) {
+            if(epsInit>0) {
+               runEps = epsInit;
+               //cout << "DES Temp: epsInit = " << epsInit << "\t epsilon = " << epsilon << endl;
+            }
             for(stepNum=0; stepNum<maxStep; stepNum++) {
+               if(stepNum==initLen) {
+                  runEps = epsilon;
+               }
                TakeStep();
-               if (Check()) {
+               if (Check(runEps)) {
                   Update();
                } else {
                   Revert();
@@ -877,6 +1028,9 @@ void Simulation::Run() {
 //                       }
                Store();		//Write statistics to the log.txt file every storeFreq step
             }
+            logFile << "****Final Tau****" << endl;
+            tau = autoCorr.GetTau();
+            logFile << "Tau: " << tau << "\t numSamples: " << numSamples + autoCorrLen << endl;
             if(maxSim==1) {
                logFile << " ****Simulation Finished****" << endl;
             }
@@ -885,20 +1039,23 @@ void Simulation::Run() {
             }
             Log();
             if(maxSim==1) {
-               if(autoCorrLen > 0) {
-                  potentialPoints += autoCorr.GetTotalMean() * 0.5 * gWeights[pLam];
-                  potentialStDevPoints += autoCorr.GetTotalStDev() * 0.5 * gWeights[pLam];
-               }
-               else {
-                  potentialPoints += potentialStats->GetMean() * 0.5 * gWeights[pLam];
-                  potentialStDevPoints += potentialStats->GetStDev() * 0.5 * gWeights[pLam];
-               }
+//               if(autoCorrLen > 0) {
+               potentialPoints += autoCorr.GetTotalMean() * 0.5 * gWeights[pLam];
+               potentialStDevPoints += autoCorr.GetTotalStDev() * 0.5 * gWeights[pLam];
+               tauScaledPoints += sqrt(tau)*autoCorr.GetTotalStDev() * 0.5 * gWeights[pLam];
+//               }
+//               else {
+//                  potentialPoints += potentialStats->GetMean() * 0.5 * gWeights[pLam];
+//                  potentialStDevPoints += potentialStats->GetStDev() * 0.5 * gWeights[pLam];
+//               }
             }
             else {
                simStats->AddVal(energyStats->GetMean());
                simPotStats->AddVal(potentialStats->GetMean());
             }
-            sys->Reset();
+            if(maxSim > 1 || numTI > 1) {
+               sys->Reset();
+            }
             energyStats->Reset();
             potentialStats->Reset();
 //               comboStats->Reset();
@@ -910,17 +1067,14 @@ void Simulation::Run() {
             potentialStDevPoints += simPotStats->GetStDev() * 0.5 * gWeights[pLam];
             simStats->Reset();
             simPotStats->Reset();
+            maxStep = savedMax;
          }
 //            energyPoints += simStats->GetMean() * 0.5 * gWeights[pLam];
 //            energyStDevPoints += simStats->GetStDev() * 0.5 * gWeights[pLam];
 //            simComboStats->Reset();
+         maxStep = savedMax;
       }
-      if(autoCorrLen > 0) {
-         logFile << "****Final Tau****" << endl;
-         tau = autoCorr.GetTau();
-         logFile << "Tau: " << tau << "\t numSamples: " << numSamples + autoCorrLen << endl;
-      }
-      TILog(potentialPoints, potentialStDevPoints);
+      TILog(potentialPoints, potentialStDevPoints, tauScaledPoints);
    }
 }
 
@@ -979,7 +1133,7 @@ void Simulation::GetGaussianQuad(int nti, vector<double>& points, vector<double>
       points.push_back(0.9061798459386640);
     }
     else {
-        cout << "ERROR: nti > 4 not implemented yet in Simulation::GetGaussianQuad" << endl;
+        cout << "ERROR: nti > 5 not implemented yet in Simulation::GetGaussianQuad" << endl;
         exit(-1);
     }
 }

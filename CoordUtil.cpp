@@ -58,19 +58,23 @@ CoordUtil::CoordUtil(int nMode, int nPart, bool internalCoords, vector <vector <
 		cout << "Warning: Not working in xyz coordinates!" << endl;
 	}
       initMass();
+/*
       atomMass = arma::vec(numPart);
       for(int i=0; i<numPart; i++) {
          atomMass(i) = atomToMass[atomType[i]];
       }
-      internalModes = arma::mat(numPart*dim,numModes);
+*/
+/*
+      armaNormModes = arma::mat(numPart*dim,numModes);
       for(int j=0; j<numPart; j++) {
          for(int k=0; k<dim; k++) {
             //armaCart(3*j+k) = (cart[j][k]-initCart[j][k])/0.52918;
             for(int i=0; i<numModes; i++) {
-               internalModes(dim*j+k,i) = normModes[i][j][k];
+               armaNormModes(dim*j+k,i) = normModes[i][j][k];
             }
          }
       }
+*/
 
 //   initMass();
 }
@@ -78,12 +82,16 @@ CoordUtil::CoordUtil(int nMode, int nPart, bool internalCoords, vector <vector <
 void CoordUtil::initInternals() {
 //Internal Coordinates
    if(internals) {
-      internalModes = arma::mat(numPart*dim,numModes);
+      atomMass = arma::vec(numPart);
+      for(int i=0; i<numPart; i++) {
+         atomMass(i) = atomToMass[atomType[i]];
+      }
+      armaNormModes = arma::mat(numPart*dim,numModes);
       for(int j=0; j<numPart; j++) {
          for(int k=0; k<dim; k++) {
             //armaCart(3*j+k) = (cart[j][k]-initCart[j][k])/0.52918;
             for(int i=0; i<numModes; i++) {
-               internalModes(dim*j+k,i) = normModes[i][j][k];
+               armaNormModes(dim*j+k,i) = normModes[i][j][k];
             }
          }
       }
@@ -185,7 +193,7 @@ void CoordUtil::initInternals() {
       }
 //DES Temp prim
       for(int f=0; f<workingMol->g_nfragment()-1; f++) {
-      //for(int f=0; f<workingMol->g_nfragment(); f++) {
+      //for(int f=0; f<workingMol->g_nfragment(); f++) {}
          massAB=0.0;
          for(int i=0; i<workingMol->fragments[f]->g_natom(); i++) {
             massAB += atomMass(workingMol->fragments[f]->globalIndex[i]);
@@ -323,10 +331,10 @@ void CoordUtil::initInternals() {
       delocIntCos.resize(nPrimInt,numModes);
 //DES Temp prim:
       //delocIntCos = arma::eye(numModes,numModes);
-      //internalModes.print("normal modes in cartesians");
-      //(equibBMat*internalModes).print("normal modes in primitive internals");
+      //armaNormModes.print("normal modes in cartesians");
+      //(equibBMat*armaNormModes).print("normal modes in primitive internals");
       equibBMat = delocIntCos.t()*equibBMat;
-      //(equibBMat*internalModes).print("normal modes in delocalized internals");
+      //(equibBMat*armaNormModes).print("normal modes in delocalized internals");
       //equibBInv = arma::normalise(sqrtInvMass*arma::pinv(equibBMat*sqrtInvMass));
       
       //equibBInv = sqrtInvMass*arma::pinv(equibBMat*sqrtInvMass);
@@ -334,7 +342,7 @@ void CoordUtil::initInternals() {
 
       //equibBMat.print("BMat in deloc");
       //equibBInv.print("bInv in deloc");
-      //(equibBMat*internalModes).print("normal modes in deloc internals");
+      //(equibBMat*armaNormModes).print("normal modes in deloc internals");
       //(equibBMat*equibBInv).print("B*B-1");
       //(equibBInv*equibBMat).print("B^-1*B");
       //cout << "bMat row norm " <<  arma::dot(equibBMat.t(),equibBMat.t())/equibBMat.n_rows << endl;
@@ -343,9 +351,9 @@ void CoordUtil::initInternals() {
 
       //delocIntCos.print("deloc coords");
       //equibBMat.print("bMat");
-      //(internalModes).print("internal normalModes");
-      //(equibBMat*internalModes).print("delocal internalNormalModes");
-      //(delocIntCos*equibBMat*internalModes).print("primitive internalNormalModes");
+      //(armaNormModes).print("internal normalModes");
+      //(equibBMat*armaNormModes).print("delocal internalNormalModes");
+      //(delocIntCos*equibBMat*armaNormModes).print("primitive internalNormalModes");
 
       //exit(-1);
 
@@ -355,7 +363,7 @@ void CoordUtil::initInternals() {
       //arma::vec step(nPrimInt);
       vector<double> step(numModes,0.0);
       for(int n=0; n<21; n++) {
-      //for(int n=0; n<10; n++) {
+      //for(int n=0; n<10; n++) {}
          //step[6] = 0.04*double(n+1)/0.52918;
          step[61] = 0.04*double(-10+n)/0.52918;
          //cout << "Step is " << step[0] << endl;
@@ -395,6 +403,42 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
 
 //	For Normal modes into Cartesians in Angstroms
         if(part[0].pos.size()==1 && !internals) {
+            arma::vec armaCart(numPart*dim);
+            arma::vec armaVecs(numModes);
+            for(int i=0; i<numModes; i++) {
+               armaVecs(i) = part[i].pos[0];
+            }
+            if(armaNormModes.is_empty()) {
+               armaNormModes = arma::mat(numPart*dim,numModes);
+               for(int j=0; j<numPart; j++) {
+                  for(int k=0; k<dim; k++) {
+                     for(int i=0; i<numModes; i++) {
+                        armaNormModes(3*j+k,i) = normModes[i][j][k];
+                     }
+                  }
+               }
+            }
+            if(armaInitCart.is_empty()) {
+               armaInitCart = arma::vec(numPart*dim);
+               for(int j=0; j<numPart; j++) {
+                  for(int k=0; k<dim; k++) {
+                     armaInitCart(3*j+k) = initCart[j][k];
+                  }
+               }
+            }
+            armaCart = armaNormModes*armaVecs + armaInitCart;
+            vector<double> tempVec;
+            for(int j=0; j<numPart; j++) {
+//               carts.push_back(arma::conv_to< vector<double> >::from(armaCart(armaInitCart(arma::span(3*j,3*j+2)))));
+               for(int k=0; k<3; k++) {
+                  tempVec.push_back(armaCart(3*j+k));
+               }
+               carts.push_back(tempVec);
+               tempVec.clear();
+            }
+            return carts;
+            
+/* Old code spends all its time accessing std::vector elements
             carts = initCart;
             for(int j=0; j<numPart; j++) {
                for(int k=0; k<dim; k++) {
@@ -403,6 +447,7 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
                   }
                }
             }
+*/
          }
          else if(internals) {
 //            for(int i=0; i<numModes; i++) {
@@ -608,11 +653,11 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
                   bTemp = sqrtInvMass*arma::pinv(bTemp*sqrtInvMass);
    //Overwriting bTemp with deltaCart
 //DES Temp prim:
-                  bTemp = arma::normalise(bTemp*equibBMat*internalModes)*step / double(numSteps) * 0.52918;
+                  bTemp = arma::normalise(bTemp*equibBMat*armaNormModes)*step / double(numSteps) * 0.52918;
                   //bTemp = arma::normalise(bTemp)*step / double(numSteps) * 0.52918;     //For primitives only
-                  //bTemp = internalModes*step / double(numSteps) * 0.52918;
-                  //bTemp = equibBInv*arma::diagmat(wMat)*bTemp*internalModes*step / double(numSteps) * 0.52918;
-                  //bTemp = internalModes*arma::diagmat(wMat)*bTemp*equibBInv*step / double(numSteps) * 0.52918;
+                  //bTemp = armaNormModes*step / double(numSteps) * 0.52918;
+                  //bTemp = equibBInv*arma::diagmat(wMat)*bTemp*armaNormModes*step / double(numSteps) * 0.52918;
+                  //bTemp = armaNormModes*arma::diagmat(wMat)*bTemp*equibBInv*step / double(numSteps) * 0.52918;
                   for(int j=0; j<numPart; j++) {
                      for(int k=0; k<dim; k++) {
                         //geom[j][k] += bTemp(3*j+k);
@@ -651,6 +696,7 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
 	return carts;
 }
 
+//DES TODO: normConst is just reduced mass! Don't need to do pinv!
 vector<double> CoordUtil::cartToNormalMode(vector< vector<double> > cart) {
    vector<double> nmodes;
 // *** Should only be called by V_QChem at the moment ***
@@ -678,18 +724,18 @@ vector<double> CoordUtil::cartToNormalMode(vector< vector<double> > cart) {
    //arma::cube armaModes = arma::conv_to<arma::cube>::from(normModes);
    arma::vec armaCart(numPart*dim);
    arma::vec armaVecs(numModes);
-   if(internalModes.is_empty()) {
-      internalModes = arma::mat(numPart*dim,numModes);
+   if(armaNormModes.is_empty()) {
+      armaNormModes = arma::mat(numPart*dim,numModes);
       for(int j=0; j<numPart; j++) {
          for(int k=0; k<dim; k++) {
             for(int i=0; i<numModes; i++) {
-               internalModes(3*j+k,i) = normModes[i][j][k];
+               armaNormModes(3*j+k,i) = normModes[i][j][k];
             }
          }
       }
    }
    if(armaInvModes.is_empty()) {
-      armaInvModes = arma::pinv(internalModes);
+      armaInvModes = arma::pinv(armaNormModes);
    }
    for(int j=0; j<numPart; j++) {
       for(int k=0; k<dim; k++) {
@@ -702,27 +748,35 @@ vector<double> CoordUtil::cartToNormalMode(vector< vector<double> > cart) {
    return nmodes;
 }
 
+double CoordUtil::GetHarmV(vector< Particle > part) {
+   double vHO = 0.0;
+   for(int i=0; i<part.size(); i++) {
+      vHO += (part[i].pos[0]*part[i].pos[0])/2.0*omega[i]*omega[i]*reducedMass[i];
+   }
+   return vHO;
+}
+
 void CoordUtil::MakeScalingVec (CoordUtil* otherCoords) {
    arma::mat alpha;
    if(armaInvModes.is_empty()) {
-      armaInvModes = pinv(internalModes);
+      armaInvModes = pinv(armaNormModes);
    }
-   if(otherCoords->internalModes.is_empty()) {
-      otherCoords->internalModes=arma::mat(dim*numPart,numModes);
+   if(otherCoords->armaNormModes.is_empty()) {
+      otherCoords->armaNormModes=arma::mat(dim*numPart,numModes);
       for(int j=0; j<numPart; j++) {
          for(int k=0; k<dim; k++) {
             for(int i=0; i<numModes; i++) {
-               otherCoords->internalModes(dim*j+k,i) = otherCoords->normModes[i][j][k];
+               otherCoords->armaNormModes(dim*j+k,i) = otherCoords->normModes[i][j][k];
             }
          }
       }
    }
 
-//   (internalModes.t()*internalModes).print("mode.T*modes");
-//   (otherCoords->internalModes.t()*otherCoords->internalModes).print("mode.T*modes");
-//   (internalModes.t()*sqrtInvMass*sqrtInvMass*internalModes).print("mode.T*mass-1*modes");
-//   (otherCoords->internalModes.t()*otherCoords->sqrtInvMass*otherCoords->sqrtInvMass*otherCoords->internalModes).print("otherMode mode.T*mass-1*modes");
-//   (internalModes*internalModes.t()).print("mode*modes.T");
+//   (armaNormModes.t()*armaNormModes).print("mode.T*modes");
+//   (otherCoords->armaNormModes.t()*otherCoords->armaNormModes).print("mode.T*modes");
+//   (armaNormModes.t()*sqrtInvMass*sqrtInvMass*armaNormModes).print("mode.T*mass-1*modes");
+//   (otherCoords->armaNormModes.t()*otherCoords->sqrtInvMass*otherCoords->sqrtInvMass*otherCoords->armaNormModes).print("otherMode mode.T*mass-1*modes");
+//   (armaNormModes*armaNormModes.t()).print("mode*modes.T");
 //   exit(-1);
 
 //DES: Project out global rotations/translations
@@ -786,8 +840,8 @@ void CoordUtil::MakeScalingVec (CoordUtil* otherCoords) {
    //armaInvModes.print("modes-1 post projector");
 
 
-   //(armaInvModes*internalModes).print("modes-1*modes");
-   alpha = armaInvModes * otherCoords->internalModes;
+   //(armaInvModes*armaNormModes).print("modes-1*modes");
+   alpha = armaInvModes * otherCoords->armaNormModes;
    //alpha.print("alphaMat");
    //(alpha.t()*alpha).print("aT.a");
    alpha = arma::square(alpha);
@@ -985,4 +1039,5 @@ if ("I"==atomStr) return  52 ;
 if ("Te"==atomStr) return  53 ;
 if ("Xe"==atomStr) return  54 ;
 if ("Cs"==atomStr) return  55 ;
+else return -1;
 }

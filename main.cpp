@@ -31,7 +31,7 @@ int main(int argc, char *argv[]){
 		prmFile = std::string(argv[3]);
 	}
 	else {
-		prmFile = std::string("~/projects/pimc/sulfate_water.prm");
+		prmFile = std::string("~/projects/pimc/sulfateClusters/sulfate_water.prm");
 //		prmFile = std::string("/Users/dstuck/GoogleDrive/UCBChemistry/Research/pimc/pimcCode/tinker_integrated_PIMC/sulfate_water.prm");
 	}
 	Simulation sim(inFile, outFile, prmFile);

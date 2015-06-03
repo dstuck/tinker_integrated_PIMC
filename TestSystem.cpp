@@ -24,8 +24,10 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
    oldPart = part_init;
 
    upToDate.resize(P, true);
-   sliceV.resize(P, 0.0);
-   oldSliceV.resize(P, 0.0);
+   sliceCheck.resize(P, 0.0);
+   oldSliceCheck.resize(P, 0.0);
+   sliceAnharmonicV.resize(P, 0.0);
+   oldSliceAnharmonicV.resize(P, 0.0);
    avgV = 0.0;
    numSteps = 0;
 //        for(int i=0; i<(int)w.size(); i++) {
@@ -58,12 +60,22 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
    else if(!physics->vType.compare("V_Tinker")) {
       V = new V_Tinker(coords, eps, beta);
    }
+   else if(!physics->vType.compare("V_Potlib")) {
+      V = new V_Potlib(coords, eps, beta);
+   }
    else if(!physics->vType.compare("V_Morse")) {
       if(physics->morseAlpha != 0.0 && physics->morseDE != 0.0) {
-         V = new V_Morse(coords, physics->morseDE, physics->morseAlpha, N);
+         if(physics->morseMass != 0.0) {
+            V = new V_Morse(coords, physics->morseDE, physics->morseAlpha, physics->morseMass, N);
+         }
+         else {
+            cout << "Warning: morseMass not set. Using default" << endl;
+            V = new V_Morse(coords, physics->morseDE, physics->morseAlpha, 1837.107017, N);
+         }
       }
       else {
-         V = new V_Morse(coords, 0.176, 1.4886, N);		//H2
+         cout << "Warning: morseMass not set. Using default" << endl;
+         V = new V_Morse(coords, 0.176, 1.4886, 1837.107017, N);		//H2
       }
    }
    else if(!physics->vType.compare("V_UCHO")) {
@@ -91,6 +103,9 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
 
    if(!physics->rhoType.compare("Rho_HO")) {
       rho = new Rho_HO(coords->omega,physics->lowFrozModes,physics->highFrozModes);
+   }
+   else if(!physics->rhoType.compare("Rho_Mixed")) {
+      rho = new Rho_Mixed(coords->omega,physics->freqCutoff,physics->lowFrozModes,physics->highFrozModes);
    }
    else if(!physics->rhoType.compare("Rho_Free")) {
       rho = new Rho_Free();
@@ -196,9 +211,11 @@ void TestSystem::Reset() {
    if(physics->isDeltaAI()) {
       vector<double> scanEnd;
       for(int i=0; i<N; i++) {
-//       Set xMax to the classical turning point for n=5 or ~3.5 times the groundstate turning point
          double minW = min(V->GetCoordUtil()->omega[i],V2->GetCoordUtil()->omega[i]);
-         scanEnd.push_back(sqrt(2.0/minW/V->GetCoordUtil()->reducedMass[i]*(5.0+0.5)));
+//       Set xMax to the classical turning point for n=5 or ~3.5 times the groundstate turning point
+//         scanEnd.push_back(sqrt(2.0/minW/V->GetCoordUtil()->reducedMass[i]*(5.0+0.5)));
+//       Nope! Should set it to be at turning point of ~5 kT
+         scanEnd.push_back(sqrt(10.0/V->GetCoordUtil()->reducedMass[i]/(eps*double(P)))/minW);
                //Bohr, so twice that in Angrstrom
       }
       int scanSteps = 20;
@@ -235,7 +252,7 @@ void TestSystem::Reset() {
       theFile.close();
       theFile2.close();
       theFile.open((filepref+".beta").c_str());
-      theFile << eps*P << endl;
+      theFile << eps*double(P) << endl;
       theFile.close();
 
       theFile.open((filepref+".fullMM").c_str());
@@ -314,7 +331,7 @@ void TestSystem::Reset() {
       }
    }
    oldEnergy = 1000000;		// TODO: clean this up
-   oldPotE = 100000;
+   oldCheckVal = 100000;
    ECheckFlag = false;
 }
 
@@ -328,28 +345,31 @@ double TestSystem::GetWeight() {
    }
    else {
       CalcPotential();
-      return potE*physics->lambdaTI;
-//    return potE;
+//      return checkVal*physics->lambdaTI;        //TODO bug: Fix for Rho_Mixed
+      return checkVal;
    }
 }
 
 double TestSystem::GetOldWeight() {
 //	TODO: Fix this so it doesn't break if using different ECheckFlag on different steps
    if(ECheckFlag) {
-      cout << "I shouldn't be here!" << endl;
+      cout << "DES: I shouldn't be here!" << endl;
       return oldEnergy;
    }
    else {
-      return oldPotE*physics->lambdaTI;
+      return oldCheckVal*physics->lambdaTI;
    }
 }
 
-double TestSystem::EstimatorV() {
+double TestSystem::EstimatorAnharmonicV() {    // Anharmonic delta V
    if(!physics->isDeltaAI()) {
-      //CalcPotential();			//Might not need this
-      return potE/((double)P);
+      CalcPotential();
+      //return checkVal/((double)P);
+      return anharmonicV/((double)P);
    }
    else {
+//DES: This is no longer used!!!
+      cout << "DES: I shouldn't be here!" << endl;
 // DES: running ab initio thermodynamic integration correction to molecular mechanics
       static int seed = -time(0);
       int pickedSlice = P*(RandomNum::rand3(&seed));
@@ -365,22 +385,22 @@ double TestSystem::EstimatorV() {
       
       return pickedV;
    }
-//	return exp(double(-eps)*(potE));
+//	return exp(double(-eps)*(checkVal));
 }
 
 double TestSystem::EstimatorE() {
-//	avgV = (avgV*double(numSteps) + potE)/double(numSteps+1);
+//	avgV = (avgV*double(numSteps) + checkVal)/double(numSteps+1);
 //	numSteps++;
 
    double est=0;
    for(int i=0; i<P; i++) {
       est += rho->Estimate(part[i], part[(i+1)%P], eps, P);
    }
-   est += potE/(double)P;
-//	cout << 1.0 - 1.0/(1.0+double(eps)*(avgV - potE)) << endl;
-//	est *= (1.0 - 1.0/(1.0+double(eps)*(avgV - potE)));
-//	est *= (1.0 - (1.0+double(eps)*potE)/(1.0+double(eps)*avgV));
-//	est += potE/double(P);
+   est += checkVal/(double)P;
+//	cout << 1.0 - 1.0/(1.0+double(eps)*(avgV - checkVal)) << endl;
+//	est *= (1.0 - 1.0/(1.0+double(eps)*(avgV - checkVal)));
+//	est *= (1.0 - (1.0+double(eps)*checkVal)/(1.0+double(eps)*avgV));
+//	est += checkVal/double(P);
 //	cout << est << endl;
    return est;
 }
@@ -395,12 +415,12 @@ void TestSystem::CalcEnergy(){
    energy = 0;
    for(int i=0; i<P; i++){
       if(!upToDate[i]) {
-         sliceV[i] = V->GetV(part[i], rho);
+         sliceAnharmonicV[i] = V->GetV(part[i], rho);
       }
       upToDate[i] = true;
-      energy += sliceV[i];
+      energy += sliceAnharmonicV[i];
    }
-   potE = energy;
+   checkVal = energy;
    for(int i=0; i<P; i++){
       energy += rho->GetRho(part[i], part[(i+1)%P], eps);
    }
@@ -408,25 +428,33 @@ void TestSystem::CalcEnergy(){
 }
 
 void TestSystem::CalcPotential(){
-   potE = 0;
+   checkVal = 0.0;
+   anharmonicV = 0.0;
    for(int i=0; i<P; i++){
       if(!upToDate[i]) {
 //DES: Set guessCarts and guessModes
          V->GetCoordUtil()->guessCarts = oldCarts[i];
          V->GetCoordUtil()->guessPart = oldPart[i];
-         sliceV[i] = V->GetV(part[i], rho);
+//         sliceAnharmonicV[i] = V->GetV(part[i], rho);
+         sliceAnharmonicV[i] = V->GetV(part[i]);
+         sliceCheck[i] = sliceAnharmonicV[i] + rho->ModifyPotential(part[i]);
+         sliceAnharmonicV[i] -= V->GetCoordUtil()->GetHarmV(part[i]);
+         if(physics->lambdaTI != 1.0) {
+            sliceCheck[i] -= sliceAnharmonicV[i] * (1.0-physics->lambdaTI);      //TODO: Test this
+         }
          //V->GetCoordUtil()->useGuess = true;
          V->GetCoordUtil()->useGuess = false;
 //DES: Read out new carts from guessCarts
          newCarts[i] = V->GetCoordUtil()->guessCarts;
       }
       upToDate[i] = true;
-      potE += sliceV[i];
+      checkVal += sliceCheck[i];
+      anharmonicV += sliceAnharmonicV[i];
    }
 }
 
 
-void TestSystem::Move(vector<double> prob, int levyNum, int levyModes){
+void TestSystem::Move(vector<double> prob, double epsMove, int levyNum, int levyModes){
 //	cout << "Take a step" << endl;
    /*
 //	Random Walks
@@ -450,7 +478,7 @@ void TestSystem::Move(vector<double> prob, int levyNum, int levyModes){
    else {
 //	Levy-Flight move
       if(P<3) {
-         cout << "Warning! You should not be using Levy-Flight with P < 3!" << endl;
+         //cout << "Warning! You should not be using Levy-Flight with P < 3!" << endl;
       }
       ECheckFlag = false;		// Check only against potential energy!
       static int seed = -time(0);
@@ -494,8 +522,8 @@ void TestSystem::Move(vector<double> prob, int levyNum, int levyModes){
             for (int s=0; s<levyLength; s++) {
                bead = (snipBegin+s+1)%P;
                beadm1 = (snipBegin+s)%P;
-               levyMean = rho->GetLevyMean(part[beadm1][pickedPart], part[snipEnd][pickedPart], (double)(levyLength-s), eps, pickedPart);
-               levySigma = rho->GetLevySigma((double)(levyLength-s), eps, pickedPart) / sqrt(part[0][pickedPart].mass);
+               levyMean = rho->GetLevyMean(part[beadm1][pickedPart], part[snipEnd][pickedPart], (double)(levyLength-s), epsMove, pickedPart);
+               levySigma = rho->GetLevySigma((double)(levyLength-s), epsMove, pickedPart) / sqrt(part[0][pickedPart].mass);
                for(int k=0; k<coorDim; k++){
                   part[bead][pickedPart].pos[k] = RandomNum::rangau(levyMean[k], levySigma, &seed);
                }
@@ -509,36 +537,77 @@ void TestSystem::Move(vector<double> prob, int levyNum, int levyModes){
 
 void TestSystem::Forget() {
    oldEnergy = energy;
-   oldPotE = potE;
+   oldCheckVal = checkVal;
    oldCarts = newCarts;
    for(int i=0; i<P; i++) {
       for(int j=0; j<N; j++) {
          oldPart[i][j].pos = part[i][j].pos;
       }
-      oldSliceV[i] = sliceV[i];
+      oldSliceAnharmonicV[i] = sliceAnharmonicV[i];
+      oldSliceCheck[i] = sliceCheck[i];
    }
 }
 
 void TestSystem::Undo() {
    energy = oldEnergy;
-   potE = oldPotE;
+   checkVal = oldCheckVal;
    newCarts = oldCarts;
    for(int i=0; i<P; i++) {
       for(int j=0; j<N; j++) {
          part[i][j].pos = oldPart[i][j].pos;
       }
-      sliceV[i] = oldSliceV[i];
+      sliceAnharmonicV[i] = oldSliceAnharmonicV[i];
+      sliceCheck[i] = oldSliceCheck[i];
    }
 }
 
 
 double TestSystem::Debug() {
-   return potE;
+   return checkVal;
 }
 
 double TestSystem::GetHarmonicE() {
 //   cout << "Harmonic Energy is: " << harmonicE << endl;
    return harmonicE;
+}
+
+void TestSystem::WritePartToFile(string pFileName) {
+   vector< vector<double> > averagePart = V->GetCoordUtil()->normalModeToCart(part[0]);
+   for(int i=1; i<part.size(); i++) {
+      vector< vector<double> > tempCarts = V->GetCoordUtil()->normalModeToCart(part[i]);
+      for(int j=0; j<averagePart.size(); j++) {
+         for(int k=0; k<averagePart[0].size(); k++) {
+            averagePart[j][k] += tempCarts[j][k];
+         }
+      }
+   }
+   for(int j=0; j<averagePart.size(); j++) {
+      for(int k=0; k<averagePart[0].size(); k++) {
+         averagePart[j][k] /= part.size();
+      }
+   }
+   ofstream pFile;
+   pFile.open(pFileName.c_str());
+   int dim = (int)averagePart[0].size();
+   if(dim>3){
+      cout << "Warning! Turn off write to file if dim > 3!!!!" << endl;
+      exit(-1);
+   }
+   else{
+      pFile << averagePart.size() << "\n" << endl;
+      for(int j=0; j<(int)averagePart.size(); j++) {
+         pFile << V->GetCoordUtil()->atomType[j] << "\t";
+         for(int k=0; k<dim; k++) {
+            pFile << averagePart[j][k] << "\t";
+         }
+// For printing carts if dim == 2
+         for(int k=0; k<(3-dim); k++) {
+            pFile << 0 << "\t";
+         }
+         pFile << endl;
+      }
+   }
+   pFile.close();
 }
 
 string TestSystem::GetVType() {

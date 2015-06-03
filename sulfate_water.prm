@@ -55,7 +55,7 @@ mutual-14-scale         1.0
 
 atom         24    24    O      "Water O"                  8     15.995    2
 atom         25    25    H      "Water H2O"                1      1.008    1
-atom        125    25    D      "Water D2O"                1      2.014    1
+atom        125   125    D      "Water D2O"                1      2.014    1
 atom        310   310    S      "Sulfate S"               16     31.972    4
 atom        311   311    O      "Sulfate O"                8     15.995    1
 
@@ -201,8 +201,7 @@ multipole   311  310  311             -0.71704
       ########################################
 
 
-polarize     24               0.837      0.390      25
-polarize     24               0.837      0.390     125
+polarize     24               0.837      0.390      25   125
 polarize     25               0.496      0.390      24
 polarize    125               0.496      0.390      24
 polarize    310               3.300      0.390     311

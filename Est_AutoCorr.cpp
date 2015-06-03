@@ -144,6 +144,7 @@ double Est_AutoCorr::GetTau() {
    }
    double tau = arma::sum(corrFunc.subvec(0,maxCheck));
    //cout << "first tau = " <<  tau << endl;
+// TODO: properly should include (N-k)/N factor in this sum
    if(maxCheck > 5*tau) {
       //cout << "Recalculating" << endl;
       tau = arma::sum(corrFunc.subvec(0,int(tau*5)));

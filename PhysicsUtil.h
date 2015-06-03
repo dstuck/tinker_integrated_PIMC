@@ -22,18 +22,20 @@ public:
 
 //	TODO: Make this a struct
 //	Propagator variables
-	string rhoType;
+   string rhoType;
+   double freqCutoff;
 //	Potential Variables
-	string vType;
-	double morseDE;
-	double morseAlpha;
-	int numInit;
-   int lowFrozModes;
-   int highFrozModes;
-   double lambdaTI;
+   string vType;
    bool deltaAbInit;
    int charge;
    int multiplicity;
+   int numInit;
+   int lowFrozModes;
+   int highFrozModes;
+   double morseDE;
+   double morseAlpha;
+   double morseMass;
+   double lambdaTI;
 };
 
 #endif /* PHYSICSUTIL_H_ */

@@ -20,8 +20,8 @@ using namespace std;
 
 class V_Morse: public Potential {
 public:
-	V_Morse(CoordUtil*, double, double, int);
-	V_Morse(CoordUtil*, vector<double>, vector<double>);
+	V_Morse(CoordUtil*, double, double, double, int);
+	V_Morse(CoordUtil*, vector<double>, vector<double>, vector<double>);
 	virtual ~V_Morse();
 	double GetV(vector<Particle>, Propagator *);
 	double GetV(vector<Particle>);

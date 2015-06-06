@@ -10,6 +10,7 @@ COBJECTS := $(patsubst %.cpp,%.o,$(CSOURCES))
 CDEPFILES := $(patsubst %.cpp,%.d,$(CSOURCES))
 #LIBTINKER := -L tinker/libtinker.a
 LIBTINKER :=  $(wildcard tinker/*.o)
+LIBPOTLIB :=  $(wildcard potlib/*.o)
 
 # LDFLAGS=-L/opt/intel/Compiler/11.1/080/Frameworks/mkl/lib/em64t/ -lblas -L/usr/lib/libshell/ -lshell
 .PHONY: clean
@@ -19,7 +20,7 @@ all: pimcTinker
 pimcTinker: $(COBJECTS) $(CDEPFILES)
 #	$(CXX) $(LDFLAGS) $(OBJECTS) -o $@	
 #	$(CXX) $(COBJECTS) $(LIBTINKER) -o $@	
-	$(F77) $(F77FLAGS) $(LIBTINKER) $(COBJECTS) -o $@	
+	$(F77) $(F77FLAGS) $(LIBTINKER) $(LIBPOTLIB) $(COBJECTS) -o $@	
 %.o: %.cpp
 #	$(CXX) $(CXXFLAGS) -c $^
 	$(CXX) $(CXXFLAGS) -c -o $@ $<

@@ -112,7 +112,7 @@ V_Tinker::V_Tinker(CoordUtil* coords, double eps, double beta) : coordKeeper(coo
 //    Get vEquib
    double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
    vEquib = 0.0;
-   vEquib = GetV(parts)*hartreeToKcal;
+   vEquib = GetVCart(coordKeeper->initCart)*hartreeToKcal;
 }
 
 V_Tinker::~V_Tinker() {
@@ -130,12 +130,14 @@ double V_Tinker::GetV(vector<Particle> part, Propagator * rho){
 }
 
 double V_Tinker::GetV(vector<Particle> part){
-
-   double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
-   double V = 0.0;
 //	Get cartesians from normal modes
    vector< vector<double> > cartPos = coordKeeper->normalModeToCart(part);
+   return GetVCart(cartPos);
+}
 
+double V_Tinker::GetVCart(vector< vector<double> > cartPos) {
+   double hartreeToKcal = 627.509469;						//From http://en.wikipedia.org/wiki/Hartree 8/17/2012
+   double V = 0.0;
 // Call Tinker
 //bool init = false;
    int init = 0;

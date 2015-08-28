@@ -89,7 +89,7 @@ TestSystem::TestSystem(int pSlice, double beta, CoordUtil* coords, PhysicsUtil *
    for(int i=0; i<N; i++) {
       harmonicE += coords->omega[i]/2.0;
    }
-   //cout << "Harmonic Energy is: " << harmonicE << endl;
+//   cout << "Harmonic Energy is: " << harmonicE << endl;
 
    coords->initInternals();
 
@@ -178,19 +178,21 @@ void TestSystem::Reset() {
 //   //double scanEnd = 0.2;
 //   double scanBegin = -0.2;   //Bohr, so twice that in Angrstrom
 //   double scanEnd = 0.2;
-//   int scanSteps = 400;
+//   int scanSteps = 10;
 //   double curX = 0.0;
 //   int pickedMode = 0;
 //   //int pickedMode2 = 3;
 //// Print out frequencies
 //   cout << "   \tw_Tinker\t\tw_QChem" << endl;
 //   for(int i=0;i<N; i++) {
-//      cout << i << "\t" << V->GetCoordUtil()->omega[i] << "\t" << V2->GetCoordUtil()->omega[i] << endl;
+//      //cout << i << "\t" << V->GetCoordUtil()->omega[i] << "\t" << V2->GetCoordUtil()->omega[i] << endl;
+//      cout << i << "\t" << V->GetCoordUtil()->omega[i] << endl;
 //   }
 //// Print out masses
 //   cout << "   \tm_Tinker\tm_QChem" << endl;
 //   for(int i=0;i<N; i++) {
-//      cout << i << "\t" << V->GetCoordUtil()->reducedMass[i] << "\t" << V2->GetCoordUtil()->reducedMass[i] << endl;
+//      cout << i << "\t" << V->GetCoordUtil()->reducedMass[i] << endl;
+//      //cout << i << "\t" << V->GetCoordUtil()->reducedMass[i] << "\t" << V2->GetCoordUtil()->reducedMass[i] << endl;
 //   }
 //   //V2->GetCoordUtil()->MakeScalingVec(V->GetCoordUtil());
 //
@@ -201,7 +203,7 @@ void TestSystem::Reset() {
 //      part[0][pickedMode].pos[0]=curX;
 ////      part[0][pickedMode2].pos[0]=curX/2;
 //      cout << curX << "\t" << V->GetV(part[0]) << "\t" << -rho->ModifyPotential(part[0]) << endl;
-//      V2->GetV(part[0]);
+//      //V2->GetV(part[0]);
 //   }
 ////*/
 //   exit(-1);
@@ -345,7 +347,7 @@ double TestSystem::GetWeight() {
    }
    else {
       CalcPotential();
-//      return checkVal*physics->lambdaTI;        //TODO bug: Fix for Rho_Mixed
+//      return checkVal*physics->lambdaTI;
       return checkVal;
    }
 }
@@ -357,7 +359,8 @@ double TestSystem::GetOldWeight() {
       return oldEnergy;
    }
    else {
-      return oldCheckVal*physics->lambdaTI;
+//      return oldCheckVal*physics->lambdaTI;
+      return oldCheckVal;
    }
 }
 
@@ -396,12 +399,7 @@ double TestSystem::EstimatorE() {
    for(int i=0; i<P; i++) {
       est += rho->Estimate(part[i], part[(i+1)%P], eps, P);
    }
-   est += checkVal/(double)P;
-//	cout << 1.0 - 1.0/(1.0+double(eps)*(avgV - checkVal)) << endl;
-//	est *= (1.0 - 1.0/(1.0+double(eps)*(avgV - checkVal)));
-//	est *= (1.0 - (1.0+double(eps)*checkVal)/(1.0+double(eps)*avgV));
-//	est += checkVal/double(P);
-//	cout << est << endl;
+   est += (checkVal)/(double)P;
    return est;
 }
 
@@ -410,7 +408,6 @@ vector < vector<Particle> > TestSystem::GetParticle() {
 }
 
 void TestSystem::CalcEnergy(){
-//	TODO: Consider storing V and only updating those that moved!!
    cout << "I shouldn't be here!" << endl;
    energy = 0;
    for(int i=0; i<P; i++){
@@ -433,21 +430,27 @@ void TestSystem::CalcPotential(){
    for(int i=0; i<P; i++){
       if(!upToDate[i]) {
 //DES: Set guessCarts and guessModes
-         V->GetCoordUtil()->guessCarts = oldCarts[i];
-         V->GetCoordUtil()->guessPart = oldPart[i];
+         //V->GetCoordUtil()->guessCarts = oldCarts[i];
+         //V->GetCoordUtil()->guessPart = oldPart[i];
 //         sliceAnharmonicV[i] = V->GetV(part[i], rho);
-         sliceAnharmonicV[i] = V->GetV(part[i]);
-         sliceCheck[i] = sliceAnharmonicV[i] + rho->ModifyPotential(part[i]);
-         sliceAnharmonicV[i] -= V->GetCoordUtil()->GetHarmV(part[i]);
+         sliceAnharmonicV[i] = V->GetV(part[i]);      // Full V
+         sliceCheck[i] = sliceAnharmonicV[i] + rho->ModifyPotential(part[i]);    //v - v_0
          if(physics->lambdaTI != 1.0) {
+            //cout << "lambdaTI = " << physics->lambdaTI << endl;
+            sliceAnharmonicV[i] -= V->GetCoordUtil()->GetHarmV(part[i]);            //v - vho
             sliceCheck[i] -= sliceAnharmonicV[i] * (1.0-physics->lambdaTI);      //TODO: Test this
          }
-         //V->GetCoordUtil()->useGuess = true;
-         V->GetCoordUtil()->useGuess = false;
+//DES Temp:
+//         sliceCheck[i] = V->GetV(part[i], rho);
+//         if(sliceCheck[i] != V->GetV(part[i], rho)*physics->lambdaTI) {
+//            cout << "DES Temp: "<<sliceCheck[i]<<"!="<<V->GetV(part[i], rho)*physics->lambdaTI << endl;
+//         }
+         ////V->GetCoordUtil()->useGuess = true;
+         //V->GetCoordUtil()->useGuess = false;
 //DES: Read out new carts from guessCarts
-         newCarts[i] = V->GetCoordUtil()->guessCarts;
+         //newCarts[i] = V->GetCoordUtil()->guessCarts;
+         upToDate[i] = true;
       }
-      upToDate[i] = true;
       checkVal += sliceCheck[i];
       anharmonicV += sliceAnharmonicV[i];
    }

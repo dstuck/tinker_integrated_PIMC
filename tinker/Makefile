@@ -30,7 +30,8 @@
 ##  LINKDIR      Linked Copies of TINKER Executables
 ##
 
-TINKERDIR = ~/GoogleDrive/UCBChemistry/Research/PIMC/PIMC_code/tinker_integrated_PIMC/tinker
+#TINKERDIR = ~/GoogleDrive/UCBChemistry/Research/PIMC/PIMC_code/tinker_integrated_PIMC/tinker
+TINKERDIR = ~/projects/pimc/pimcCode/master_build/tinker
 BINDIR = $(TINKERDIR)/bin
 LINKDIR = $(TINKERDIR)/link
 
@@ -89,7 +90,7 @@ LINKDIR = $(TINKERDIR)/link
 ##  Compiler: Intel Fortran for Mac 12.0
 ##
 
-F77 = /opt/intel/Compiler/11.1/080/bin/intel64/ifort
+#F77 = /opt/intel/Compiler/11.1/080/bin/intel64/ifort
 LIBS =
 F77FLAGS = -c -axSSSE3 -vec-report0
 OPTFLAGS = -O3 -no-ipo -no-prec-div
@@ -173,12 +174,8 @@ LINKFLAGS = -static-intel -mmacosx-version-min=10.4
 #################################################################
 
 OBJS = active.o \
-       alchemy.o \
        analysis.o \
-       analyze.o \
        angles.o \
-       anneal.o \
-       archive.o \
        attach.o \
        basefile.o \
        beeman.o \
@@ -201,18 +198,12 @@ OBJS = active.o \
        connect.o \
        connolly.o \
        control.o \
-       correlate.o \
-       crystal.o \
        cspline.o \
        cutoffs.o \
        deflate.o \
        delete.o \
        diagq.o \
        diffeq.o \
-       diffuse.o \
-       distgeom.o \
-       document.o \
-       dynamic.o \
        eangang.o \
        eangang1.o \
        eangang2.o \
@@ -281,6 +272,7 @@ OBJS = active.o \
        energy.o \
        dstuckEnergy.o \
        dstuckVibrate.o \
+       dstuckOptimize.o \
        eopbend.o \
        eopbend1.o \
        eopbend2.o \
@@ -334,7 +326,6 @@ OBJS = active.o \
        final.o \
        flatten.o \
        freeunit.o \
-       gda.o \
        geometry.o \
        getint.o \
        getkey.o \
@@ -369,8 +360,6 @@ OBJS = active.o \
        initres.o \
        initrot.o \
        insert.o \
-       intedit.o \
-       intxyz.o \
        invbeta.o \
        invert.o \
        jacobi.o \
@@ -412,50 +401,32 @@ OBJS = active.o \
        mdstat.o \
        mechanic.o \
        merge.o \
-       minimize.o \
-       minirot.o \
-       minrigid.o \
        molecule.o \
-       molxyz.o \
        moments.o \
-       monte.o \
        mutate.o \
        nblist.o \
-       newton.o \
-       newtrot.o \
        nextarg.o \
        nexttext.o \
        nose.o \
        nspline.o \
-       nucleic.o \
        number.o \
        numeral.o \
        numgrad.o \
        ocvm.o \
        openend.o \
-       optimize.o \
-       optirot.o \
-       optrigid.o \
        optsave.o \
        orbital.o \
        orient.o \
        orthog.o \
        overlap.o \
-       path.o \
-       pdbxyz.o \
        picalc.o \
        pmestuff.o \
        pmpb.o \
-       polarize.o \
-       poledit.o \
        polymer.o \
-       potential.o \
        precise.o \
        pressure.o \
-       prmedit.o \
        prmkey.o \
        promo.o \
-       protein.o \
        prtdyn.o \
        prterr.o \
        prtint.o \
@@ -464,11 +435,7 @@ OBJS = active.o \
        prtprm.o \
        prtseq.o \
        prtxyz.o \
-       pss.o \
-       pssrigid.o \
-       pssrot.o \
        quatfit.o \
-       radial.o \
        random.o \
        rattle.o \
        readdyn.o \
@@ -487,53 +454,29 @@ OBJS = active.o \
        rmsfit.o \
        rotlist.o \
        rotpole.o \
-       saddle.o \
-       scan.o \
        sdstep.o \
        search.o \
        server.o \
        shakeup.o \
        sigmoid.o \
        sktstuff.o \
-       sniffer.o \
        sort.o \
-       spacefill.o \
-       spectrum.o \
        square.o \
        suffix.o \
-       superpose.o \
        surface.o \
        surfatom.o \
        switch.o \
-       sybylxyz.o \
        temper.o \
-       testgrad.o \
-       testhess.o \
-       testpair.o \
-       testrot.o \
-       timer.o \
-       timerot.o \
        tncg.o \
        torphase.o \
        torque.o \
-       torsfit.o \
        torsions.o \
        trimtext.o \
        unitcell.o \
-       valence.o \
        verlet.o \
        version.o \
-       vibbig.o \
-       vibrate.o \
-       vibrot.o \
        volume.o \
-       xtalfit.o \
-       xtalmin.o \
        xyzatm.o \
-       xyzedit.o \
-       xyzint.o \
-       xyzpdb.o \
-       xyzsybyl.o \
        zatom.o
 
 #EXEFILES = alchemy.x \
@@ -595,7 +538,7 @@ OBJS = active.o \
            xyzint.x \
            xyzpdb.x \
            xyzsybyl.x
-EXEFILES = analyze.x \
+#EXEFILES = analyze.x \
            intxyz.x \
            potential.x \
            prmedit.x \
@@ -617,7 +560,8 @@ server.o:
 %.x: %.o libtinker.a
 	${F77} ${LINKFLAGS} -o $@ $^ ${LIBS}; strip $@
 
-all:	${EXEFILES}
+#all:	${EXEFILES}
+all:	${OBJS}
 
 clean:
 	rm -f *.o *.a *.x
@@ -909,6 +853,7 @@ libtinker.a: ${OBJS}
         energy.o \
         dstuckEnergy.o \
         dstuckVibrate.o \
+        dstuckOptimize.o \
         eopbend.o \
         eopbend1.o \
         eopbend2.o \
@@ -1228,6 +1173,7 @@ empole3.o: action.i analyz.i atmtyp.i atoms.i bound.i boxes.i cell.i chgpot.i co
 energy.o: bound.i cutoff.i energi.i iounit.i potent.i rigid.i sizes.i vdwpot.i
 dstuckEnergy.o: bound.i cutoff.i energi.i iounit.i potent.i rigid.i sizes.i vdwpot.i align.i atoms.i bath.i cell.i files.i group.i inform.i keys.i linmin.i minima.i molcul.i mutant.i neigh.i openmp.i output.i params.i pdb.i precis.i scales.i sequen.i socket.i warp.i zclose.i boxes.i
 dstuckVibrate.o: bound.i cutoff.i energi.i iounit.i potent.i rigid.i sizes.i vdwpot.i align.i atoms.i bath.i cell.i files.i group.i inform.i keys.i linmin.i minima.i molcul.i mutant.i neigh.i openmp.i output.i params.i pdb.i precis.i scales.i sequen.i socket.i warp.i zclose.i boxes.i
+dstuckOptimize.o: bound.i cutoff.i energi.i iounit.i potent.i rigid.i sizes.i vdwpot.i align.i atoms.i bath.i cell.i files.i group.i inform.i keys.i linmin.i minima.i molcul.i mutant.i neigh.i openmp.i output.i params.i pdb.i precis.i scales.i sequen.i socket.i warp.i zclose.i boxes.i
 eopbend.o: angle.i angpot.i atoms.i bound.i energi.i fields.i group.i math.i opbend.i sizes.i usage.i
 eopbend1.o: angle.i angpot.i atoms.i bound.i deriv.i energi.i group.i math.i opbend.i sizes.i usage.i virial.i
 eopbend2.o: angle.i angpot.i atoms.i bound.i deriv.i group.i hessn.i math.i opbend.i sizes.i

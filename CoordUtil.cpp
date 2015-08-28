@@ -58,6 +58,10 @@ CoordUtil::CoordUtil(int nMode, int nPart, bool internalCoords, vector <vector <
 		cout << "Warning: Not working in xyz coordinates!" << endl;
 	}
       initMass();
+      atomMass = arma::vec(numPart);
+      for(int i=0; i<numPart; i++) {
+         atomMass(i) = atomToMass[atomType[i]];
+      }
 /*
       atomMass = arma::vec(numPart);
       for(int i=0; i<numPart; i++) {
@@ -82,10 +86,10 @@ CoordUtil::CoordUtil(int nMode, int nPart, bool internalCoords, vector <vector <
 void CoordUtil::initInternals() {
 //Internal Coordinates
    if(internals) {
-      atomMass = arma::vec(numPart);
-      for(int i=0; i<numPart; i++) {
-         atomMass(i) = atomToMass[atomType[i]];
-      }
+//      atomMass = arma::vec(numPart);
+//      for(int i=0; i<numPart; i++) {
+//         atomMass(i) = atomToMass[atomType[i]];
+//      }
       armaNormModes = arma::mat(numPart*dim,numModes);
       for(int j=0; j<numPart; j++) {
          for(int k=0; k<dim; k++) {
@@ -409,6 +413,7 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
                armaVecs(i) = part[i].pos[0];
             }
             if(armaNormModes.is_empty()) {
+               cout << "DES: Setting up armaNormModes!" << endl;
                armaNormModes = arma::mat(numPart*dim,numModes);
                for(int j=0; j<numPart; j++) {
                   for(int k=0; k<dim; k++) {
@@ -418,6 +423,7 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
                   }
                }
             }
+            cout << "DES: After chance to set up armaNormModes!" << endl;
             if(armaInitCart.is_empty()) {
                armaInitCart = arma::vec(numPart*dim);
                for(int j=0; j<numPart; j++) {
@@ -489,7 +495,7 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
             //cout << "numSteps = " << numSteps <<  endl;
             //cout << "maxNorm  = " << modeNorm <<  endl;
 // DES Temp prim:
-///*            
+/*(
             if(useGuess) {
                cout << "Shouldn't be in useGuess in CoordUtil.cpp" << endl;
                for(int j=0; j<numPart; j++) {
@@ -514,23 +520,16 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
 // DES Temp: stepCheck
 //            stepCheck += modeNorm/double(numSteps);
 //            cout << "DES: step 1 =" << modeNorm/double(numSteps) << endl;
-//*/
+)*/
 
             arma::vec step(numModes);
-            if(numSteps>1) {
+//            if(numSteps>1) {
 //               for (int j=0; j<numPart; ++j) {
 //                  for (int k=0; k<3; ++k) {
 //                     cout << carts[j][k] << "\t";
 //                  }
 //                  cout << endl;
 //               }
-               double geomArray[3*numPart];
-               for (int j=0; j<numPart; ++j) {
-                  for (int k=0; k<3; ++k) {
-                     geomArray[3*j+k] = carts[j][k];
-                  }
-               }
-               workingMol->set_geom_array(geomArray);
 
                for(int i=0; i<numModes; i++) {
                   if(useGuess) {
@@ -540,141 +539,63 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
                      step(i) = part[i].pos[0];
                   }
                }
-//DES: Project out global rotations/translations because of fragment motions
+
 //TODO: This will crash on linear fragments!
-               arma::vec totalCOM(3,arma::fill::zeros);
-               for(int i=0; i<numPart; i++) {
-                  for(int j=0; j<3; j++) {
-                     totalCOM(j) += atomMass(i) * carts[i][j];
-                  }
-               }
-/*
-               arma::mat projector,projVecs,tempMat;
-               arma::vec tempVec;
-// global translations
-               for(int n=0; n<3; n++) {
-                  tempVec = arma::vec(3*numPart,arma::fill::zeros);
+               //cout << "DES: atomMass is " << atomMass.n_elem << endl;
+               if(totalCOM.is_empty()) {
+                  totalCOM = arma::vec(3,arma::fill::zeros);
                   for(int i=0; i<numPart; i++) {
-                     tempVec(3*i + n) = atomMass(i);
+                     for(int j=0; j<3; j++) {
+                        totalCOM(j) += atomMass(i) * carts[i][j];
+                     }
                   }
-                  tempVec = arma::normalise(tempVec);
-                  //tempVec.print("global translation");
-                  //projector += tempVec*tempVec.t();
-                  projVecs = join_rows(projVecs,tempVec);
                }
-// global rotations
-               for(int n=0; n<3; n++) {
-                  tempVec = arma::vec(3*numPart,arma::fill::zeros);
-                  for(int i=0; i<numPart; i++) {
-                     tempVec(3*i + (n+1)%3) = atomMass(i) * (carts[i][(n+2)%3] - totalCOM((n+2)%3));
-                     tempVec(3*i + (n+2)%3) = -atomMass(i) * (carts[i][(n+1)%3] - totalCOM((n+1)%3));
-                  }
-                  tempVec = arma::normalise(tempVec);
-                  //tempVec.print("global rotation");
-                  //projector += tempVec*tempVec.t();
-                  projVecs = join_rows(projVecs,tempVec);
-               }
-               arma::qr(projector,tempMat,projVecs);
-               projector = projector.cols(0,5)*projector.cols(0,5).t();
-*/
-//DES Temp prim:
-               //for(int n=0; n<numSteps; n++) 
+//               arma::mat projector,projVecs,tempMat;
+//               arma::vec tempVec;
+//// global translations
+//               for(int n=0; n<3; n++) {
+//                  tempVec = arma::vec(3*numPart,arma::fill::zeros);
+//                  for(int i=0; i<numPart; i++) {
+//                     tempVec(3*i + n) = atomMass(i);
+//                  }
+//                  tempVec = arma::normalise(tempVec);
+//                  //tempVec.print("global translation");
+//                  //projector += tempVec*tempVec.t();
+//                  projVecs = join_rows(projVecs,tempVec);
+//               }
+//// global rotations
+//               for(int n=0; n<3; n++) {
+//                  tempVec = arma::vec(3*numPart,arma::fill::zeros);
+//                  for(int i=0; i<numPart; i++) {
+//                     tempVec(3*i + (n+1)%3) = atomMass(i) * (carts[i][(n+2)%3] - totalCOM((n+2)%3));
+//                     tempVec(3*i + (n+2)%3) = -atomMass(i) * (carts[i][(n+1)%3] - totalCOM((n+1)%3));
+//                  }
+//                  tempVec = arma::normalise(tempVec);
+//                  //tempVec.print("global rotation");
+//                  //projector += tempVec*tempVec.t();
+//                  projVecs = join_rows(projVecs,tempVec);
+//               }
+//               arma::qr(projector,tempMat,projVecs);
+//               projector = projector.cols(0,5)*projector.cols(0,5).t();
+               carts = LinearStep(step / double(numSteps), carts, true);
                for(int n=1; n<numSteps; n++) {
-                  arma::mat projector,projVecs,tempMat;
-                  arma::vec tempVec;
-   // global translations
-                  for(int nn=0; nn<3; nn++) {
-                     tempVec = arma::vec(3*numPart,arma::fill::zeros);
-                     for(int i=0; i<numPart; i++) {
-                        tempVec(3*i + nn) = atomMass(i);
-                     }
-                     //tempVec = arma::normalise(tempVec);
-                     //tempVec.print("global translation");
-                     //projector += tempVec*tempVec.t();
-                     projVecs = join_rows(projVecs,tempVec);
-                  }
-   // global rotations
-                  for(int nn=0; nn<3; nn++) {
-                     tempVec = arma::vec(3*numPart,arma::fill::zeros);
-                     for(int i=0; i<numPart; i++) {
-                        tempVec(3*i + (nn+1)%3) = atomMass(i) * (carts[i][(nn+2)%3] - totalCOM((nn+2)%3));
-                        tempVec(3*i + (nn+2)%3) = -atomMass(i) * (carts[i][(nn+1)%3] - totalCOM((nn+1)%3));
-                     }
-                     //tempVec = arma::normalise(tempVec);
-                     //tempVec.print("global rotation");
-                     //projector += tempVec*tempVec.t();
-                     projVecs = join_rows(projVecs,tempVec);
-                  }
-                  arma::qr(projector,tempMat,projVecs);
-                  projector = projector.cols(0,5)*projector.cols(0,5).t();
-
-                  int nPrimInt = workingMol->g_nintco();
-                  arma::mat bTemp(nPrimInt,numPart*3);
-                  double ** bArray = workingMol->compute_B();
-                  for(int i=0; i< nPrimInt; i++) {
-                     for(int j=0; j<numPart*3; j++) {
-                        bTemp(i,j) = bArray[i][j];
-                     }
-                  }
-                  opt::free_matrix(bArray);
-// Add rotations
-                  if(workingMol->g_nfragment()>1) {
-                     arma::vec bCol;
-                     //double alpha,sinT,cosT;
-                     double * fragCOM;
-                     for(int f=0; f<workingMol->g_nfragment(); f++) {
-                        fragCOM = workingMol->fragments[f]->com();
-                        //for(int j=0;j<3;j++) cout << "DES: COM = " << fragCOM[j] << endl;;
-                        for(int j=0; j<3; j++) {
-                           //alpha=0;
-                           bCol = arma::vec(3*numPart,arma::fill::zeros);
-                           for(int i=0; i<workingMol->fragments[f]->g_natom(); i++) {
-                              bCol(3*workingMol->fragments[f]->globalIndex[i] + (j+1)%3) = (carts[workingMol->fragments[f]->globalIndex[i]][(j+2)%3]-fragCOM[(j+2)%3]) * atomMass(workingMol->fragments[f]->globalIndex[i]);
-                              bCol(3*workingMol->fragments[f]->globalIndex[i] + (j+2)%3) = -(carts[workingMol->fragments[f]->globalIndex[i]][(j+1)%3]-fragCOM[(j+1)%3]) * atomMass(workingMol->fragments[f]->globalIndex[i]);
-                           }
-   //DES Temp prim:
-                           bTemp = arma::join_cols(bTemp,bCol.t());
-                           nPrimInt++;
-                        }
-                        opt::free_array(fragCOM);
-                     }
-                  }
-// TODO: recalculate translations here
-//DES Temp prim:
-                  bTemp = arma::join_cols(bTemp,fragExtraB);
-                  nPrimInt += 3*(workingMol->g_nfragment()-1);
-                  //nPrimInt += 3*(workingMol->g_nfragment());
-                  //bTemp.print("bTemp in step");
-
-                  bTemp -= bTemp * projector; 
-
-                  bTemp = delocIntCos.t()*arma::normalise(bTemp,2,1);
-                  //bTemp = arma::normalise(sqrtInvMass*arma::pinv(bTemp*sqrtInvMass));
-                  bTemp = sqrtInvMass*arma::pinv(bTemp*sqrtInvMass);
-   //Overwriting bTemp with deltaCart
-//DES Temp prim:
-                  bTemp = arma::normalise(bTemp*equibBMat*armaNormModes)*step / double(numSteps) * 0.52918;
-                  //bTemp = arma::normalise(bTemp)*step / double(numSteps) * 0.52918;     //For primitives only
-                  //bTemp = armaNormModes*step / double(numSteps) * 0.52918;
-                  //bTemp = equibBInv*arma::diagmat(wMat)*bTemp*armaNormModes*step / double(numSteps) * 0.52918;
-                  //bTemp = armaNormModes*arma::diagmat(wMat)*bTemp*equibBInv*step / double(numSteps) * 0.52918;
-                  for(int j=0; j<numPart; j++) {
-                     for(int k=0; k<dim; k++) {
-                        //geom[j][k] += bTemp(3*j+k);
-                        geomArray[j*3+k] += bTemp(3*j+k);
-                        carts[j][k] += bTemp(3*j+k);
-                     }
-                  }
-                  workingMol->set_geom_array(geomArray);
-
-// DES Temp: stepCheck
-//                  stepCheck += arma::norm(bTemp,"fro");
-//                  cout << "DES: step " << n+1 << " =" << arma::norm(bTemp,"fro") << endl;
-      
+                  carts = LinearStep(step / double(numSteps), carts, false);
                }
-// DES Temp: stepCheck
-//               cout << "DES: stepCheck = " << stepCheck << endl;
-            }
+               if(false) {
+// TODO: Take full step, calculate error in internals, take step in error directions and repeat until error < thresh
+//    This requires calculating the difference in internals which should simply require grabbing intcos from workingMol
+//    but unfortunately requires calculating the added interfragment coordinates which I didn't include directly into
+//    optking (note: this is different than optking's poor interfragment modes which I don't use). Getting difference
+//    in center of mass should be simple but the fragment rotations might be a bit of a pain.
+//    See Peng, C. Y.; Ayala, P. Y.; Schlegel, H. Bernhard; Frisch, Michael J. J. Comp. Chem. 17, 49, 1996
+                  cout << "DES: Before step: " << endl;
+                  workingMol->print_intcos(stdout);
+
+                  carts = LinearStep(step, carts, true);
+
+                  cout << "DES: After step: " << endl;
+                  workingMol->print_intcos(stdout);
+               }
 // DES: Save coords for reading in next time
             guessCarts = carts;
             guessPart = part;
@@ -693,7 +614,117 @@ vector< vector<double> > CoordUtil::normalModeToCart(vector<Particle> part) {
 		cout << "Error in CoordUtil: mistaken dimension" << endl;
 		exit(-1);
 	}
+
+//DES Temp:
+//         cout << endl;
+//        for(int j=0; j<numPart; j++) {
+//           for(int k=0; k<3; k++) {
+//              cout << carts[j][k] << '\t';
+//           }
+//            cout << endl;
+//        }
+
 	return carts;
+}
+
+vector< vector<double> > CoordUtil::LinearStep(arma::vec step, vector< vector<double> > carts, bool equib) {
+   if(equib) {
+      step = armaNormModes*step * 0.52918;	// Converts from Bohr to A radii
+      double geomArray[3*numPart];
+      for(int j=0; j<numPart; j++) {
+         for(int k=0; k<dim; k++) {
+            carts[j][k] += step(3*j+k);
+            geomArray[j*3+k] += carts[j][k];
+         }
+      }
+      workingMol->set_geom_array(geomArray);
+//      for(int j=0; j<numPart; j++) {
+//         for(int k=0; k<dim; k++) {
+//            for(int i=0; i<numModes; i++) {
+//               carts[j][k] += normModes[i][j][k]*step(i) * 0.52918;				// Converts from Bohr radii to A, value from wikipedia 9/18/12
+//            }
+//         }
+//      }
+   }
+   else {
+      arma::mat projector,projVecs,tempMat;
+      arma::vec tempVec;
+   // Set carts in optking
+      double geomArray[3*numPart];
+      for (int j=0; j<numPart; ++j) {
+         for (int k=0; k<3; ++k) {
+            geomArray[3*j+k] = carts[j][k];
+         }
+      }
+      workingMol->set_geom_array(geomArray);
+   // global translations
+      for(int nn=0; nn<3; nn++) {
+         tempVec = arma::vec(3*numPart,arma::fill::zeros);
+         for(int i=0; i<numPart; i++) {
+            tempVec(3*i + nn) = atomMass(i);
+         }
+         projVecs = join_rows(projVecs,tempVec);
+      }
+   // global rotations
+      for(int nn=0; nn<3; nn++) {
+         tempVec = arma::vec(3*numPart,arma::fill::zeros);
+         for(int i=0; i<numPart; i++) {
+            tempVec(3*i + (nn+1)%3) = atomMass(i) * (carts[i][(nn+2)%3] - totalCOM((nn+2)%3));
+            tempVec(3*i + (nn+2)%3) = -atomMass(i) * (carts[i][(nn+1)%3] - totalCOM((nn+1)%3));
+         }
+         projVecs = join_rows(projVecs,tempVec);
+      }
+      arma::qr(projector,tempMat,projVecs);
+      projector = projector.cols(0,5)*projector.cols(0,5).t();
+
+      int nPrimInt = workingMol->g_nintco();
+      arma::mat bTemp(nPrimInt,numPart*3);
+      double ** bArray = workingMol->compute_B();
+      for(int i=0; i< nPrimInt; i++) {
+         for(int j=0; j<numPart*3; j++) {
+            bTemp(i,j) = bArray[i][j];
+         }
+      }
+      opt::free_matrix(bArray);
+   // Add rotations
+      if(workingMol->g_nfragment()>1) {
+         arma::vec bCol;
+         double * fragCOM;
+         for(int f=0; f<workingMol->g_nfragment(); f++) {
+            fragCOM = workingMol->fragments[f]->com();
+            for(int j=0; j<3; j++) {
+               bCol = arma::vec(3*numPart,arma::fill::zeros);
+               for(int i=0; i<workingMol->fragments[f]->g_natom(); i++) {
+                  bCol(3*workingMol->fragments[f]->globalIndex[i] + (j+1)%3) = (carts[workingMol->fragments[f]->globalIndex[i]][(j+2)%3]-fragCOM[(j+2)%3]) * atomMass(workingMol->fragments[f]->globalIndex[i]);
+                  bCol(3*workingMol->fragments[f]->globalIndex[i] + (j+2)%3) = -(carts[workingMol->fragments[f]->globalIndex[i]][(j+1)%3]-fragCOM[(j+1)%3]) * atomMass(workingMol->fragments[f]->globalIndex[i]);
+               }
+               bTemp = arma::join_cols(bTemp,bCol.t());
+               nPrimInt++;
+            }
+            opt::free_array(fragCOM);
+         }
+      }
+   // TODO: recalculate translations here
+      bTemp = arma::join_cols(bTemp,fragExtraB);
+      nPrimInt += 3*(workingMol->g_nfragment()-1);
+
+      bTemp -= bTemp * projector; 
+
+      bTemp = delocIntCos.t()*arma::normalise(bTemp,2,1);
+      bTemp = sqrtInvMass*arma::pinv(bTemp*sqrtInvMass);
+   //Overwriting bTemp with deltaCart
+      bTemp = arma::normalise(bTemp*equibBMat*armaNormModes)*step * 0.52918;
+      for(int j=0; j<numPart; j++) {
+         for(int k=0; k<dim; k++) {
+//DES Temp
+            geomArray[j*3+k] += bTemp(3*j+k);
+            carts[j][k] += bTemp(3*j+k);
+         }
+      }
+//DES Temp
+      workingMol->set_geom_array(geomArray);
+   }
+   return carts;
 }
 
 //DES TODO: normConst is just reduced mass! Don't need to do pinv!
@@ -757,6 +788,7 @@ double CoordUtil::GetHarmV(vector< Particle > part) {
 }
 
 void CoordUtil::MakeScalingVec (CoordUtil* otherCoords) {
+   cout << "DES: This is junk!" << endl;
    arma::mat alpha;
    if(armaInvModes.is_empty()) {
       armaInvModes = pinv(armaNormModes);
@@ -784,10 +816,12 @@ void CoordUtil::MakeScalingVec (CoordUtil* otherCoords) {
    //arma::mat projector(3*numPart,3*numPart,arma::fill::zeros);
    arma::mat projector,projVecs,tempMat;
    arma::vec tempVec;
-   arma::vec totalCOM(3,arma::fill::zeros);
-   for(int i=0; i<numPart; i++) {
-      for(int j=0; j<3; j++) {
-         totalCOM(j) += atomMass(i) * initCart[i][j];
+   if(totalCOM.is_empty()) {
+      totalCOM = arma::vec(3,arma::fill::zeros);
+      for(int i=0; i<numPart; i++) {
+         for(int j=0; j<3; j++) {
+            totalCOM(j) += atomMass(i) * initCart[i][j];
+         }
       }
    }
 // global translations
@@ -861,6 +895,7 @@ void CoordUtil::MakeScalingVec (CoordUtil* otherCoords) {
 }
 
 void CoordUtil::MatchModes (CoordUtil* matchCoords) {
+   cout << "DES: Junk for deltaAI" << endl;
    arma::mat S(numModes,numModes,arma::fill::zeros);
    arma::mat absS(numModes,numModes);
    for(int i=0; i<numModes; i++) {

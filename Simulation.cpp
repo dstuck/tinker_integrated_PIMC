@@ -200,6 +200,11 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 					else if(lineTokens[0].find("levyInit") != std::string::npos) {
 						physicsParams->numInit = atoi(lineTokens[1].c_str());
 					}
+					else if(lineTokens[0].find("internalCoords") != std::string::npos) {
+                                            if(atof(lineTokens[1].c_str())>0) {
+                                                internalCoords = true;
+                                            }
+					}
 					else if(lineTokens[0].find("rhoType") != std::string::npos) {
 						physicsParams->rhoType = lineTokens[1];
 					}
@@ -233,17 +238,6 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 					else if(lineTokens[0].find("numGeomPrint") != std::string::npos) {
 					        numGeomPrint=atoi(lineTokens[1].c_str());
 					}
-					else if(lineTokens[0].find("charge") != std::string::npos) {
-						physicsParams->charge = atoi(lineTokens[1].c_str());
-					}
-					else if(lineTokens[0].find("multiplicity") != std::string::npos || lineTokens[0].find("spin") != std::string::npos) {
-						physicsParams->multiplicity = atoi(lineTokens[1].c_str());
-					}
-					else if(lineTokens[0].find("deltaAI") != std::string::npos) {
-                                            if(atof(lineTokens[1].c_str())>0) {
-                                                physicsParams->deltaAbInit = true;
-                                            }
-					}
 					else if(lineTokens[0].find("noEnergy") != std::string::npos) {
                                             if(atof(lineTokens[1].c_str())>0) {
                                                 noEnergy = true;
@@ -254,9 +248,9 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
                                                 readGeom = true;
                                             }
 					}
-					else if(lineTokens[0].find("internalCoords") != std::string::npos) {
+					else if(lineTokens[0].find("readOmega") != std::string::npos) {
                                             if(atof(lineTokens[1].c_str())>0) {
-                                                internalCoords = true;
+                                                readOmega = true;
                                             }
 					}
 					else if(lineTokens[0].find("scaleGeom") != std::string::npos) {
@@ -264,9 +258,15 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
                                                 scaleGeom = true;
                                             }
 					}
-					else if(lineTokens[0].find("readOmega") != std::string::npos) {
+					else if(lineTokens[0].find("charge") != std::string::npos) {
+						physicsParams->charge = atoi(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("multiplicity") != std::string::npos || lineTokens[0].find("spin") != std::string::npos) {
+						physicsParams->multiplicity = atoi(lineTokens[1].c_str());
+					}
+					else if(lineTokens[0].find("deltaAI") != std::string::npos) {
                                             if(atof(lineTokens[1].c_str())>0) {
-                                                readOmega = true;
+                                                physicsParams->deltaAbInit = true;
                                             }
 					}
 					else {
@@ -476,7 +476,6 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 	coorDim = 1;
 //		nMode = nPart;
 //		coorDim = 3;
-//		TODO: fix the following hack
 //		mass.clear();
 //		for(int i=0; i<nPart; i++) {
 //			if(!atomType[i].compare("H")) {
@@ -513,7 +512,6 @@ Simulation::Simulation(string inFileName, string logFileName, string prmFile) : 
 	}
 
 
-//	TODO: Remove this
 //	double eZPE=0;
 //	double eFull=0;
 //	for(int i=0; i<nMode; i++){
@@ -875,7 +873,7 @@ void Simulation::Log() {
          }
       }
       else {
-         logFile << "Mean Energy: " << energyStats->GetMean() << endl;
+         logFile << "Mean Anharmonic Energy: " << energyStats->GetMean() - sys->GetHarmonicE() << endl;
          logFile << "Energy St. Dev.: " << energyStats->GetStDev() << endl;
          logFile << "Mean Potential: " << potentialStats->GetMean() << endl;
          logFile << "Potential St. Dev.: " << potentialStats->GetStDev() << endl;
@@ -883,8 +881,8 @@ void Simulation::Log() {
    }
    else {
       if(autoCorrLen > 0) {
-         logFile << "Mean Potential: " << autoCorr.GetTotalMean() << endl;
-         logFile << "Potential St. Dev.: " << autoCorr.GetTotalStDev() << endl;
+         logFile << "Mean Anharmonic Free Energy: " << autoCorr.GetTotalMean() << endl;
+         logFile << "Free Energy St. Dev.: " << autoCorr.GetTotalStDev() << endl;
          if(stepNum >= maxStep) {
             logFile << "95% Confidence Bounds: " << autoCorr.GetTotalStDev()/sqrt(double(numSamples+autoCorrLen))*sqrt(tau*2)*1.96 << endl;
          }

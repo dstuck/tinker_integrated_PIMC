@@ -19,6 +19,9 @@
 using namespace std;
 
 class CoordUtil {
+private:
+	vector< vector<double> > LinearStep(arma::vec,vector< vector<double> >, bool equib = false);
+
 public:
 	CoordUtil();
 	CoordUtil(int, int, bool, vector< vector< vector<double> > >, vector<double>, vector<double>, vector< vector<double> >, vector<string>, vector<int>, vector< vector<int> >, string, string,bool,bool);
@@ -57,6 +60,7 @@ public:
 	vector<Particle> guessPart;
 	vector< vector< vector<double> > > normModes;    //TODO: remove this in favor of armaNormModes
       arma::vec scalingVec;
+      arma::vec totalCOM;
       arma::vec atomMass;
       arma::vec armaInitCart;
       arma::mat fragExtraB;

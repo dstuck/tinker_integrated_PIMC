@@ -1,7 +1,8 @@
 #CXX=icpc
 #CXX=g++
 #CXXFLAGS=-O0 -g $(INCLUDES)
-ARMAFLAGS=-L/Users/dstuck/tools/armadillo -I/Users/dstuck/tools/armadillo/include -larmadillo -framework Accelerate
+ARMADILLO_BASE := $(if $(ARMADILLO_BASE),$(ARMADILLO_BASE),'/usr/local/Cellar/armadillo/9.300.2')
+ARMAFLAGS=-L$(ARMADILLO_BASE) -I$(ARMADILLO_BASE)/include -larmadillo -framework Accelerate
 CXXFLAGS=-O0 -g -DDEBUG $(ARMAFLAGS)
 F77FLAGS=-cxxlib -nofor-main -Xlinker -no_compact_unwind -framework Accelerate
 #CSOURCES := $(wildcard *.cpp)
